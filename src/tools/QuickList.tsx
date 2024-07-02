@@ -85,7 +85,10 @@ export const QuickList = () => {
                 </Box>
               }
             >
-              <ListItemText primary={item.text} />
+              <ListItemText
+                title={item.text}
+                primary={item.text.length > 50 ? `${item.text.substring(0, 50)}...` : item.text}
+              />
             </ListItem>
           )}
         </For>
