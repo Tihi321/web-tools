@@ -16,13 +16,16 @@ interface Timer {
 
 export const MultiTimer = () => {
   const [timers, setTimers] = createStore<Timer[]>([]);
-  const [newTimerDuration, setNewTimerDuration] = createSignal("");
+  const [minutes, setMinutes] = createSignal("");
+  const [seconds, setSeconds] = createSignal("");
 
   const addTimer = () => {
-    const durationInSeconds = parseFloat(newTimerDuration());
-    if (isNaN(durationInSeconds) || durationInSeconds <= 0) return;
+    const mins = parseInt(minutes()) || 0;
+    const secs = parseInt(seconds()) || 0;
 
-    const durationInMs = Math.round(durationInSeconds * 1000);
+    if (mins === 0 && secs === 0) return;
+
+    const durationInMs = (mins * 60 + secs) * 1000;
     setTimers(
       produce((timers) => {
         timers.push({
@@ -33,7 +36,8 @@ export const MultiTimer = () => {
         });
       })
     );
-    setNewTimerDuration("");
+    setMinutes("");
+    setSeconds("");
   };
 
   const removeTimer = (id: number) => {
@@ -113,11 +117,19 @@ export const MultiTimer = () => {
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <TextField
           type="number"
-          label="Duration (seconds)"
-          value={newTimerDuration()}
-          onChange={(e) => setNewTimerDuration(e.target.value)}
+          label="Minutes"
+          value={minutes()}
+          onChange={(e) => setMinutes(e.target.value)}
           sx={{ flexGrow: 1 }}
-          inputProps={{ step: "0.01" }} // Allow input with two decimal places
+          inputProps={{ min: "0", step: "1" }}
+        />
+        <TextField
+          type="number"
+          label="Seconds"
+          value={seconds()}
+          onChange={(e) => setSeconds(e.target.value)}
+          sx={{ flexGrow: 1 }}
+          inputProps={{ min: "0", max: "59", step: "1" }}
         />
         <Button variant="contained" onClick={addTimer}>
           Add Timer
