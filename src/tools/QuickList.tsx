@@ -1,6 +1,6 @@
 // src/components/QuickListTool.tsx
 import { createSignal, createEffect, For } from "solid-js";
-import { createStore } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 import { Box, TextField, Button, List, ListItem, ListItemText, IconButton } from "@suid/material";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DeleteIcon from "@suid/icons-material/Delete";
@@ -59,8 +59,12 @@ export const QuickList = () => {
     const toIndex = dragOverItem();
 
     if (fromIndex !== null && toIndex !== null && fromIndex !== toIndex) {
-      const [reorderedItem] = items.splice(fromIndex, 1);
-      setItems(items.splice(toIndex, 0, reorderedItem));
+      setItems(
+        produce((items) => {
+          const [reorderedItem] = items.splice(fromIndex, 1);
+          items.splice(toIndex, 0, reorderedItem);
+        })
+      );
     }
 
     setDraggedItem(null);
