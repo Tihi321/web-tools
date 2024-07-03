@@ -1,6 +1,6 @@
 // src/components/MultiTimer.tsx
 import { createSignal, createEffect, For, onMount } from "solid-js";
-import { createStore, produce, SetStoreFunction } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 import { Box, TextField, Button, Typography, List, ListItem, LinearProgress } from "@suid/material";
 import PlayArrowIcon from "@suid/icons-material/PlayArrow";
 import StopIcon from "@suid/icons-material/Stop";
@@ -14,29 +14,35 @@ interface Timer {
   isRunning: boolean;
 }
 
+interface StoredTimer {
+  id: number;
+  duration: number;
+}
+
 export const MultiTimer = () => {
   const [timers, setTimers] = createStore<Timer[]>([]);
   const [minutes, setMinutes] = createSignal("");
   const [seconds, setSeconds] = createSignal("");
 
   const saveTimersToLocalStorage = (timers: Timer[]) => {
-    localStorage.setItem("multiTimers", JSON.stringify(timers));
+    const storedTimers: StoredTimer[] = timers.map((timer) => ({
+      id: timer.id,
+      duration: timer.duration,
+    }));
+    localStorage.setItem("multiTimers", JSON.stringify(storedTimers));
   };
 
   const loadTimersFromLocalStorage = (): Timer[] => {
     const storedTimers = localStorage.getItem("multiTimers");
-    return storedTimers ? JSON.parse(storedTimers) : [];
-  };
-
-  // Wrapper function to update timers and save to local storage
-  const updateTimers = (updater: (store: Timer[]) => Timer[] | void) => {
-    setTimers(
-      produce((store) => {
-        const result = updater(store);
-        if (result) return result;
-      })
-    );
-    saveTimersToLocalStorage(timers);
+    if (storedTimers) {
+      const parsedTimers: StoredTimer[] = JSON.parse(storedTimers);
+      return parsedTimers.map((timer) => ({
+        ...timer,
+        remainingTime: timer.duration,
+        isRunning: false,
+      }));
+    }
+    return [];
   };
 
   onMount(() => {
@@ -51,44 +57,54 @@ export const MultiTimer = () => {
     if (mins === 0 && secs === 0) return;
 
     const durationInMs = (mins * 60 + secs) * 1000;
-    updateTimers((timers) => {
-      timers.push({
-        id: Date.now(),
-        duration: durationInMs,
-        remainingTime: durationInMs,
-        isRunning: false,
-      });
-    });
+    setTimers(
+      produce((timers) => {
+        timers.push({
+          id: Date.now(),
+          duration: durationInMs,
+          remainingTime: durationInMs,
+          isRunning: false,
+        });
+      })
+    );
+    saveTimersToLocalStorage(timers);
     setMinutes("");
     setSeconds("");
   };
 
   const removeTimer = (id: number) => {
-    updateTimers((timers) => timers.filter((timer) => timer.id !== id));
+    setTimers(timers.filter((timer) => timer.id !== id));
+    saveTimersToLocalStorage(timers);
   };
 
   const startTimer = (id: number) => {
-    updateTimers((timers) => {
-      const timer = timers.find((t) => t.id === id);
-      if (timer) timer.isRunning = true;
-    });
+    setTimers(
+      produce((timers) => {
+        const timer = timers.find((t) => t.id === id);
+        if (timer) timer.isRunning = true;
+      })
+    );
   };
 
   const stopTimer = (id: number) => {
-    updateTimers((timers) => {
-      const timer = timers.find((t) => t.id === id);
-      if (timer) timer.isRunning = false;
-    });
+    setTimers(
+      produce((timers) => {
+        const timer = timers.find((t) => t.id === id);
+        if (timer) timer.isRunning = false;
+      })
+    );
   };
 
   const resetTimer = (id: number) => {
-    updateTimers((timers) => {
-      const timer = timers.find((t) => t.id === id);
-      if (timer) {
-        timer.remainingTime = timer.duration;
-        timer.isRunning = false;
-      }
-    });
+    setTimers(
+      produce((timers) => {
+        const timer = timers.find((t) => t.id === id);
+        if (timer) {
+          timer.remainingTime = timer.duration;
+          timer.isRunning = false;
+        }
+      })
+    );
   };
 
   const formatTime = (milliseconds: number) => {
@@ -108,17 +124,19 @@ export const MultiTimer = () => {
 
   createEffect(() => {
     const interval = setInterval(() => {
-      updateTimers((timers) => {
-        timers.forEach((timer) => {
-          if (timer.isRunning && timer.remainingTime > 0) {
-            timer.remainingTime = Math.max(0, timer.remainingTime - 10); // Decrease by 10ms
-            if (timer.remainingTime === 0) {
-              timer.isRunning = false;
-              playSound();
+      setTimers(
+        produce((timers) => {
+          timers.forEach((timer) => {
+            if (timer.isRunning && timer.remainingTime > 0) {
+              timer.remainingTime = Math.max(0, timer.remainingTime - 10); // Decrease by 10ms
+              if (timer.remainingTime === 0) {
+                timer.isRunning = false;
+                playSound();
+              }
             }
-          }
-        });
-      });
+          });
+        })
+      );
     }, 10); // Update every 10ms for smoother countdown
 
     return () => clearInterval(interval);
