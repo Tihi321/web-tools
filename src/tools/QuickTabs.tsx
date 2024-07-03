@@ -99,7 +99,7 @@ export const QuickTabs = () => {
     setEditingTabId(null);
   };
 
-  const onDragStart = (e: DragEvent, index: number) => {
+  const onDragStart = (_: DragEvent, index: number) => {
     setDraggedTab(index);
   };
 
