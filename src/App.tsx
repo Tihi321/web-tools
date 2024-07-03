@@ -19,6 +19,7 @@ import { QuickList } from "./tools/QuickList";
 import { QuickTabs } from "./tools/QuickTabs";
 import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
+import { MultiTimer } from "./tools/MultiTimer";
 
 const Container = styled("div")`
   display: flex;
@@ -28,6 +29,7 @@ const Container = styled("div")`
 
 const tools: string[] = [
   "stopwatch",
+  "multi-timer",
   "quick-list",
   "quick-tabs",
   "json-validator",
@@ -36,7 +38,7 @@ const tools: string[] = [
 
 export const App = () => {
   const [isDrawerOpen, setIsDrawerOpen] = createSignal<boolean>(false);
-  const [selectedTool, setSelectedTool] = createSignal<string>("");
+  const [selectedTool, setSelectedTool] = createSignal<string>("stopwatch");
 
   const toggleDrawer = () => setIsDrawerOpen(!isDrawerOpen());
 
@@ -86,8 +88,9 @@ export const App = () => {
       </Drawer>
 
       <Box component="main" sx={{ p: 3 }}>
-        <Show when={selectedTool()} fallback={<Typography>Select a tool from the menu</Typography>}>
+        <Show when={selectedTool()}>
           {selectedTool() === "stopwatch" && <Stopwatch />}
+          {selectedTool() === "multi-timer" && <MultiTimer />}
           {selectedTool() === "quick-list" && <QuickList />}
           {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
