@@ -1,4 +1,4 @@
-import { createSignal, Show, For } from "solid-js";
+import { createSignal, Show, For, onMount } from "solid-js";
 import {
   AppBar,
   Toolbar,
@@ -17,6 +17,8 @@ import { styled } from "solid-styled-components";
 import { Stopwatch } from "./tools/Stopwatch";
 import { QuickList } from "./tools/QuickList";
 import { QuickTabs } from "./tools/QuickTabs";
+import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
+import { JsonStringifier } from "./tools/JsonStringifier";
 
 const Container = styled("div")`
   display: flex;
@@ -24,7 +26,13 @@ const Container = styled("div")`
   min-height: 100vh;
 `;
 
-const tools: string[] = ["stopwatch", "quick-list", "quick-tabs"];
+const tools: string[] = [
+  "stopwatch",
+  "quick-list",
+  "quick-tabs",
+  "json-validator",
+  "json-stringifier",
+];
 
 export const App = () => {
   const [isDrawerOpen, setIsDrawerOpen] = createSignal<boolean>(false);
@@ -34,8 +42,16 @@ export const App = () => {
 
   const selectTool = (toolName: string) => {
     setSelectedTool(toolName);
+    history.pushState({}, "", `?tool=${toolName}`);
     setIsDrawerOpen(false);
   };
+
+  onMount(() => {
+    const initialTool = location.search.replace("?tool=", "");
+    if (tools.includes(initialTool)) {
+      setSelectedTool(initialTool);
+    }
+  });
 
   return (
     <Container>
@@ -58,11 +74,11 @@ export const App = () => {
       </AppBar>
 
       <Drawer anchor="left" open={isDrawerOpen()} onClose={toggleDrawer}>
-        <List>
+        <List sx={{ width: "250px" }}>
           <For each={tools}>
-            {(toolName) => (
+            {(toolName, index) => (
               <ListItemButton onClick={() => selectTool(toolName)}>
-                <ListItemText primary={startCase(replace(toolName, "-", " "))} />
+                {index() + 1}. <ListItemText primary={startCase(replace(toolName, "-", " "))} />
               </ListItemButton>
             )}
           </For>
@@ -74,6 +90,8 @@ export const App = () => {
           {selectedTool() === "stopwatch" && <Stopwatch />}
           {selectedTool() === "quick-list" && <QuickList />}
           {selectedTool() === "quick-tabs" && <QuickTabs />}
+          {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
+          {selectedTool() === "json-stringifier" && <JsonStringifier />}
         </Show>
       </Box>
     </Container>
