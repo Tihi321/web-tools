@@ -111,9 +111,6 @@ export const MultiTimer = () => {
 
   return (
     <Box sx={{ width: "100%", maxWidth: 600, margin: "auto" }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Multi-Timer
-      </Typography>
       <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <TextField
           type="number"
