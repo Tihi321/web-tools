@@ -11,9 +11,12 @@ import {
   Box,
 } from "@suid/material";
 import MenuIcon from "@suid/icons-material/Menu";
+import replace from "lodash/replace";
+import startCase from "lodash/startCase";
 import { styled } from "solid-styled-components";
 import { Stopwatch } from "./tools/Stopwatch";
 import { QuickList } from "./tools/QuickList";
+import { QuickTabs } from "./tools/QuickTabs";
 
 const Container = styled("div")`
   display: flex;
@@ -21,7 +24,7 @@ const Container = styled("div")`
   min-height: 100vh;
 `;
 
-const tools: string[] = ["Stopwatch", "Quick List"];
+const tools: string[] = ["stopwatch", "quick-list", "quick-tabs"];
 
 export const App = () => {
   const [isDrawerOpen, setIsDrawerOpen] = createSignal<boolean>(false);
@@ -59,7 +62,7 @@ export const App = () => {
           <For each={tools}>
             {(toolName) => (
               <ListItemButton onClick={() => selectTool(toolName)}>
-                <ListItemText primary={toolName} />
+                <ListItemText primary={startCase(replace(toolName, "-", " "))} />
               </ListItemButton>
             )}
           </For>
@@ -68,8 +71,9 @@ export const App = () => {
 
       <Box component="main" sx={{ p: 3 }}>
         <Show when={selectedTool()} fallback={<Typography>Select a tool from the menu</Typography>}>
-          {selectedTool() === "Stopwatch" && <Stopwatch />}
-          {selectedTool() === "Quick List" && <QuickList />}
+          {selectedTool() === "stopwatch" && <Stopwatch />}
+          {selectedTool() === "quick-list" && <QuickList />}
+          {selectedTool() === "quick-tabs" && <QuickTabs />}
         </Show>
       </Box>
     </Container>
