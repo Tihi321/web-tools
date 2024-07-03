@@ -5,6 +5,7 @@ import { Box, IconButton, TextField, Button, Paper, Typography } from "@suid/mat
 import CloseIcon from "@suid/icons-material/Close";
 import AddIcon from "@suid/icons-material/Add";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
+import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 
 interface TabData {
   id: number;
@@ -18,6 +19,7 @@ export const QuickTabs = () => {
   const [editingTabId, setEditingTabId] = createSignal<number | null>(null);
   const [notificationMessage, setNotificationMessage] = createSignal("");
   const [draggedTab, setDraggedTab] = createSignal<number | null>(null);
+  const [dragOverTab, setDragOverTab] = createSignal<number | null>(null);
 
   // Load tabs from local storage on component mount
   createEffect(() => {
@@ -99,35 +101,58 @@ export const QuickTabs = () => {
     setEditingTabId(null);
   };
 
-  const onDragStart = (_: DragEvent, index: number) => {
+  const onDragStart = (index: number) => {
     setDraggedTab(index);
   };
 
-  const onDragOver = (e: DragEvent) => {
-    e.preventDefault();
+  const onDragEnter = (index: number) => {
+    setDragOverTab(index);
   };
 
-  const onDrop = (e: DragEvent, dropIndex: number) => {
-    e.preventDefault();
-    const dragIndex = draggedTab();
-    if (dragIndex === null || dragIndex === dropIndex) return;
+  const onDragEnd = () => {
+    const fromIndex = draggedTab();
+    const toIndex = dragOverTab();
 
-    setTabs(
-      produce((tabs) => {
-        const [reorderedItem] = tabs.splice(dragIndex, 1);
-        tabs.splice(dropIndex, 0, reorderedItem);
-      })
-    );
+    if (fromIndex !== null && toIndex !== null && fromIndex !== toIndex) {
+      setTabs(
+        produce((tabs) => {
+          const [reorderedItem] = tabs.splice(fromIndex, 1);
+          tabs.splice(toIndex, 0, reorderedItem);
+        })
+      );
 
-    if (activeTab() === dragIndex) {
-      setActiveTab(dropIndex);
-    } else if (activeTab() > dragIndex && activeTab() <= dropIndex) {
-      setActiveTab(activeTab() - 1);
-    } else if (activeTab() < dragIndex && activeTab() >= dropIndex) {
-      setActiveTab(activeTab() + 1);
+      if (activeTab() === fromIndex) {
+        setActiveTab(toIndex);
+      } else if (activeTab() > fromIndex && activeTab() <= toIndex) {
+        setActiveTab(activeTab() - 1);
+      } else if (activeTab() < fromIndex && activeTab() >= toIndex) {
+        setActiveTab(activeTab() + 1);
+      }
     }
 
     setDraggedTab(null);
+    setDragOverTab(null);
+  };
+
+  const onTouchStart = (e: TouchEvent, index: number) => {
+    e.preventDefault();
+    onDragStart(index);
+  };
+
+  const onTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const dragOverElement = document.elementFromPoint(touch.clientX, touch.clientY);
+    const tabElement = dragOverElement?.closest("[data-index]") as HTMLElement | null;
+    if (tabElement) {
+      const index = parseInt(tabElement.dataset.index || "0", 10);
+      onDragEnter(index);
+    }
+  };
+
+  const onTouchEnd = (e: TouchEvent) => {
+    e.preventDefault();
+    onDragEnd();
   };
 
   return (
@@ -140,12 +165,23 @@ export const QuickTabs = () => {
                 variant={activeTab() === index() ? "contained" : "outlined"}
                 onClick={() => setActiveTab(index())}
                 onDblClick={() => startEditingTabName(tab.id)}
-                sx={{ textTransform: "none", cursor: "move" }}
+                sx={{
+                  textTransform: "none",
+                  cursor: "move",
+                  backgroundColor: dragOverTab() === index() ? "rgba(0, 0, 0, 0.1)" : undefined,
+                  transition: "background-color 0.2s ease",
+                }}
                 draggable={true}
-                onDragStart={(e) => onDragStart(e, index())}
-                onDragOver={onDragOver}
-                onDrop={(e) => onDrop(e, index())}
+                data-index={index()}
+                onDragStart={() => onDragStart(index())}
+                onDragEnter={() => onDragEnter(index())}
+                onDragEnd={onDragEnd}
+                onDragOver={(e) => e.preventDefault()}
+                onTouchStart={(e) => onTouchStart(e, index())}
+                onTouchMove={onTouchMove}
+                onTouchEnd={onTouchEnd}
               >
+                <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
                 {editingTabId() === tab.id ? (
                   <TextField
                     value={tab.title}
