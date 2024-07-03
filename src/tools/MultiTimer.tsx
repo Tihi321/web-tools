@@ -146,7 +146,9 @@ export const MultiTimer = () => {
                   mb: 1,
                 }}
               >
-                <Typography variant="h6">{formatTime(timer.remainingTime)}</Typography>
+                <Typography variant="h6">
+                  {formatTime(timer.remainingTime)} / {formatTime(timer.duration)}
+                </Typography>
                 <Box>
                   <Button
                     variant="outlined"
