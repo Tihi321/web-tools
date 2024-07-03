@@ -1,7 +1,18 @@
-// src/components/QuickTabs.tsx
 import { createSignal, createEffect, For } from "solid-js";
 import { createStore, produce } from "solid-js/store";
-import { Box, IconButton, TextField, Button, Paper, Typography } from "@suid/material";
+import {
+  Box,
+  IconButton,
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+} from "@suid/material";
 import CloseIcon from "@suid/icons-material/Close";
 import AddIcon from "@suid/icons-material/Add";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
@@ -20,6 +31,8 @@ export const QuickTabs = () => {
   const [notificationMessage, setNotificationMessage] = createSignal("");
   const [draggedTab, setDraggedTab] = createSignal<number | null>(null);
   const [dragOverTab, setDragOverTab] = createSignal<number | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = createSignal(false);
+  const [tabToDelete, setTabToDelete] = createSignal<number | null>(null);
 
   // Load tabs from local storage on component mount
   createEffect(() => {
@@ -48,6 +61,23 @@ export const QuickTabs = () => {
       })
     );
     setActiveTab(tabs.length - 1);
+  };
+
+  const openDeleteConfirmation = (id: number) => {
+    setTabToDelete(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const closeDeleteConfirmation = () => {
+    setDeleteConfirmOpen(false);
+    setTabToDelete(null);
+  };
+
+  const confirmDelete = () => {
+    if (tabToDelete() !== null) {
+      removeTab(tabToDelete() || 0);
+      closeDeleteConfirmation();
+    }
   };
 
   const removeTab = (id: number) => {
@@ -210,7 +240,7 @@ export const QuickTabs = () => {
                   size="small"
                   onClick={(e) => {
                     e.stopPropagation();
-                    removeTab(tab.id);
+                    openDeleteConfirmation(tab.id);
                   }}
                   sx={{ ml: 1 }}
                 >
@@ -248,6 +278,25 @@ export const QuickTabs = () => {
       {notificationMessage() && (
         <Typography sx={{ mt: 2, textAlign: "center" }}>{notificationMessage()}</Typography>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={deleteConfirmOpen()}
+        onClose={closeDeleteConfirmation}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description"
+      >
+        <DialogTitle id="alert-dialog-title">{"Confirm Tab Deletion"}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Are you sure you want to delete this tab? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeDeleteConfirmation}>Cancel</Button>
+          <Button onClick={confirmDelete}>Delete</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
