@@ -1,10 +1,11 @@
 // src/components/QuickListTool.tsx
 import { createSignal, createEffect, For } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createStore } from "solid-js/store";
 import { Box, TextField, Button, List, ListItem, ListItemText, IconButton } from "@suid/material";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DeleteIcon from "@suid/icons-material/Delete";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
+import { filter } from "lodash";
 
 interface ListItem {
   id: number;
@@ -32,17 +33,13 @@ export const QuickList = () => {
 
   const addItem = () => {
     if (inputValue().trim()) {
-      setItems(
-        produce((items) => {
-          items.push({ id: Date.now(), text: inputValue().trim() });
-        })
-      );
+      setItems([...items, { id: Date.now(), text: inputValue().trim() }]);
       setInputValue("");
     }
   };
 
   const removeItem = (id: number) => {
-    setItems(produce((items) => items.filter((item) => item.id !== id)));
+    setItems(filter(items, (item) => item.id !== id));
   };
 
   const copyToClipboard = (text: string) => {
@@ -62,12 +59,8 @@ export const QuickList = () => {
     const toIndex = dragOverItem();
 
     if (fromIndex !== null && toIndex !== null && fromIndex !== toIndex) {
-      setItems(
-        produce((items) => {
-          const [reorderedItem] = items.splice(fromIndex, 1);
-          items.splice(toIndex, 0, reorderedItem);
-        })
-      );
+      const [reorderedItem] = items.splice(fromIndex, 1);
+      setItems(items.splice(toIndex, 0, reorderedItem));
     }
 
     setDraggedItem(null);
@@ -125,7 +118,13 @@ export const QuickList = () => {
                   >
                     <ContentCopyIcon />
                   </IconButton>
-                  <IconButton edge="end" aria-label="delete" onClick={() => removeItem(item.id)}>
+                  <IconButton
+                    edge="end"
+                    aria-label="delete"
+                    onClick={() => {
+                      removeItem(item.id);
+                    }}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 </Box>
