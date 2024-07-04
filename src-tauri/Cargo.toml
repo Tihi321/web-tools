@@ -15,11 +15,11 @@ name = "tools_lib"
 crate-type = ["lib"]
 
 [build-dependencies]
-tauri-build = { version = "2.0.0-beta.17", features = [] }
-tauri-cli = "2.0.0-beta.20"
+tauri-build = { version = "2.0.0-beta.18", features = [] }
+tauri-cli = "2.0.0-beta.21"
 
 [dependencies]
-tauri = { version = "2.0.0-beta.22", features = [] }
+tauri = { version = "2.0.0-beta.23" }
 
 [features]
 # by default Tauri runs in production mode
