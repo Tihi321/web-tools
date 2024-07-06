@@ -56,15 +56,21 @@ export const SpeakIt = () => {
   createEffect(() => {
     if (mounted()) {
       const voices = getVoices();
-      console.log(voices);
       setAvailableVoices(voices);
+    }
+  });
+
+  createEffect(() => {
+    if (speaker) {
+      speaker.onend = () => {
+        setSpeaking(false);
+      };
     }
   });
 
   const stopSpeaking = () => {
     if (!speaker) return;
     speechSynthesis.cancel();
-    setSpeaking(false);
   };
 
   const startSpeaking = () => {
