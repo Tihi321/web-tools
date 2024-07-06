@@ -21,6 +21,7 @@ import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
 import { SpeakIt } from "./tools/SpeakIt";
+import { Footer } from "./components/layout/Footer";
 
 const Container = styled("div")`
   display: flex;
@@ -100,6 +101,7 @@ export const App = () => {
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
         </Show>
       </Box>
+      <Footer />
     </Container>
   );
 };
