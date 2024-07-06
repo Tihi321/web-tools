@@ -20,6 +20,7 @@ import { QuickTabs } from "./tools/QuickTabs";
 import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
+import { SpeakIt } from "./tools/SpeakIt";
 
 const Container = styled("div")`
   display: flex;
@@ -30,6 +31,7 @@ const Container = styled("div")`
 const tools: string[] = [
   "stopwatch",
   "multi-timer",
+  "speak-it",
   "quick-list",
   "quick-tabs",
   "json-validator",
@@ -91,6 +93,7 @@ export const App = () => {
         <Show when={selectedTool()}>
           {selectedTool() === "stopwatch" && <Stopwatch />}
           {selectedTool() === "multi-timer" && <MultiTimer />}
+          {selectedTool() === "speak-it" && <SpeakIt />}
           {selectedTool() === "quick-list" && <QuickList />}
           {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
