@@ -51,7 +51,6 @@ export const getVoices = () => {
   const voices = speechSynthesis.getVoices();
   const filteredVoices = filter(voices, (voice) => LANGUAGES.includes(voice.lang));
   const orderedVoices = orderVoices(filteredVoices);
-  console.log(orderedVoices);
   return orderedVoices;
 };
 

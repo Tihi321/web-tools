@@ -1,4 +1,4 @@
-// src/components/JsonStringifier.tsx
+// src/components/SpeakIt.tsx
 import { createEffect, createSignal, onMount } from "solid-js";
 import {
   Box,
@@ -18,6 +18,8 @@ import { Refresh } from "../components/icons/Refresh";
 import { Save } from "../components/icons/Save";
 import { Play } from "../components/icons/Play";
 import { Stop } from "../components/icons/Stop";
+import { Pause } from "../components/icons/Pause";
+import { RangeInput } from "../components/inputs/RangeInput";
 
 const MenuItemStyled = styled(MenuItem)`
   display: flex;
@@ -42,8 +44,12 @@ export const SpeakIt = () => {
   const [inputText, setInputText] = createSignal("");
   const [selectedVoice, setSelectedVoice] = createSignal("");
   const [speaking, setSpeaking] = createSignal(false);
+  const [speakerSet, setSpeakerSet] = createSignal(false);
   const [mounted, setMounted] = createSignal(false);
   const [availableVoices, setAvailableVoices] = createSignal<SpeechSynthesisVoice[]>([]);
+  const [pitch, setPitch] = createSignal(1);
+  const [rate, setRate] = createSignal(1);
+  const [volume, setVolume] = createSignal(1);
   let speaker: SpeechSynthesisUtterance | null = null;
 
   onMount(() => {
@@ -64,6 +70,7 @@ export const SpeakIt = () => {
     if (speaker) {
       speaker.onend = () => {
         setSpeaking(false);
+        setSpeakerSet(false);
       };
     }
   });
@@ -71,17 +78,33 @@ export const SpeakIt = () => {
   const stopSpeaking = () => {
     if (!speaker) return;
     speechSynthesis.cancel();
+    setSpeaking(false);
+    setSpeakerSet(false);
   };
 
-  const startSpeaking = () => {
+  const speakIt = () => {
     if (!speaker) return;
     const voice = getVoice(selectedVoice() || "", availableVoices());
     if (voice) {
-      speaker.voice = voice;
-      speaker.lang = voice.lang;
-      speaker.text = inputText();
-      speechSynthesis.speak(speaker);
-      setSpeaking(true);
+      if (speakerSet()) {
+        if (!speaking()) {
+          speechSynthesis.resume();
+          setSpeaking(true);
+        } else {
+          speechSynthesis.pause();
+          setSpeaking(false);
+        }
+      } else {
+        speaker.voice = voice;
+        speaker.lang = voice.lang;
+        speaker.text = inputText();
+        speaker.pitch = pitch();
+        speaker.rate = rate();
+        speaker.volume = volume();
+        speechSynthesis.speak(speaker);
+        setSpeakerSet(true);
+        setSpeaking(true);
+      }
     }
   };
 
@@ -116,6 +139,39 @@ export const SpeakIt = () => {
           </Select>
         </FormControl>
       </Box>
+      <Box sx={{ mb: 2 }}>
+        <Typography gutterBottom>Pitch: {pitch().toFixed(1)}</Typography>
+        <RangeInput
+          type="range"
+          min="0.5"
+          max="2"
+          step="0.1"
+          value={pitch()}
+          onInput={(e) => setPitch(parseFloat(e.currentTarget.value))}
+        />
+      </Box>
+      <Box sx={{ mb: 2 }}>
+        <Typography gutterBottom>Rate: {rate().toFixed(1)}</Typography>
+        <RangeInput
+          type="range"
+          min="0.5"
+          max="2"
+          step="0.1"
+          value={rate()}
+          onInput={(e) => setRate(parseFloat(e.currentTarget.value))}
+        />
+      </Box>
+      <Box sx={{ mb: 2 }}>
+        <Typography gutterBottom>Volume: {volume().toFixed(1)}</Typography>
+        <RangeInput
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          value={volume()}
+          onInput={(e) => setVolume(parseFloat(e.currentTarget.value))}
+        />
+      </Box>
       <Box
         sx={{
           display: "flex",
@@ -146,13 +202,11 @@ export const SpeakIt = () => {
         >
           <Save />
         </Button>
-        <Button
-          variant="contained"
-          onClick={() => {
-            speaking() ? stopSpeaking() : startSpeaking();
-          }}
-        >
-          {speaking() ? <Stop /> : <Play />}
+        <Button variant="contained" onClick={speakIt}>
+          {speaking() ? <Pause /> : <Play />}
+        </Button>
+        <Button variant="contained" onClick={stopSpeaking}>
+          <Stop />
         </Button>
       </Box>
     </Box>
