@@ -1,7 +1,7 @@
 import { filter, find, get, head, includes } from "lodash";
 import { LANGUAGES } from "../constants";
 
-function orderVoices(voices: { name: string; lang: string }[]): SpeechSynthesisVoice[] {
+const orderVoices = (voices: { name: string; lang: string }[]): SpeechSynthesisVoice[] => {
   const multilingualVoices = filter(voices, (voice) =>
     includes(get(voice, ["name"]), "Multilingual")
   );
@@ -45,7 +45,7 @@ function orderVoices(voices: { name: string; lang: string }[]): SpeechSynthesisV
   ];
 
   return orderedVoices as SpeechSynthesisVoice[];
-}
+};
 
 export const getVoices = () => {
   const voices = speechSynthesis.getVoices();
