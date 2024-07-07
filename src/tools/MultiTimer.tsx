@@ -118,7 +118,7 @@ export const MultiTimer = () => {
   };
 
   const playSound = () => {
-    const audio = new Audio("https://cdn.tihomir-selak.from.hr/assets/music/nice-alarm.mp3");
+    const audio = new Audio("https://cdn.tihomir-selak.from.hr/assets/sfx/nice-alarm.mp3");
     audio.play();
   };
 
