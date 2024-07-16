@@ -48,7 +48,7 @@ export const App = () => {
   const selectTool = (toolName: string) => {
     setSelectedTool(toolName);
     history.pushState({}, "", `?tool=${toolName}`);
-    setIsDrawerOpen(false);
+    toggleDrawer();
   };
 
   onMount(() => {
