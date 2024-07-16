@@ -201,7 +201,7 @@ export const QuickTabs = () => {
     setEditingTabId(null);
   };
 
-  const onDragStartParent = (e: DragEvent, index: number) => {
+  const onDragStartParent = (_: DragEvent, index: number) => {
     setDraggedParentTab(index);
   };
 
@@ -209,7 +209,7 @@ export const QuickTabs = () => {
     e.preventDefault();
   };
 
-  const onDropParent = (e: DragEvent, index: number) => {
+  const onDropParent = (_: DragEvent, index: number) => {
     const draggedIndex = draggedParentTab();
     if (draggedIndex !== null && draggedIndex !== index) {
       setParentTabs(
@@ -229,7 +229,7 @@ export const QuickTabs = () => {
     setDraggedParentTab(null);
   };
 
-  const onDragStartChild = (e: DragEvent, index: number) => {
+  const onDragStartChild = (_: DragEvent, index: number) => {
     setDraggedChildTab(index);
   };
 
@@ -237,7 +237,7 @@ export const QuickTabs = () => {
     e.preventDefault();
   };
 
-  const onDropChild = (e: DragEvent, index: number) => {
+  const onDropChild = (_: DragEvent, index: number) => {
     const draggedIndex = draggedChildTab();
     if (draggedIndex !== null && draggedIndex !== index) {
       setParentTabs(
