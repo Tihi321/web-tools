@@ -314,15 +314,14 @@ export const QuickTabs = () => {
                 </Button>
               )}
             </For>
+            <IconButton
+              size="small"
+              onClick={addNewParentTab}
+              sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
+            >
+              <AddIcon />
+            </IconButton>
           </Box>
-          <Button
-            variant="contained"
-            onClick={addNewParentTab}
-            startIcon={<AddIcon />}
-            sx={{ mb: 2 }}
-          >
-            Add New Group
-          </Button>
         </Accordion>
         <Show when={parentTabs.length > 0}>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
@@ -388,15 +387,14 @@ export const QuickTabs = () => {
                 </Button>
               )}
             </For>
+            <IconButton
+              size="small"
+              onClick={() => addNewChildTab(parentTabs[activeParentTab()].id)}
+              sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
+            >
+              <AddIcon />
+            </IconButton>
           </Box>
-          <Button
-            variant="outlined"
-            onClick={() => addNewChildTab(parentTabs[activeParentTab()].id)}
-            startIcon={<AddIcon />}
-            sx={{ mb: 2 }}
-          >
-            Add New Tab
-          </Button>
           <Show when={get(parentTabs, [activeParentTab(), "children"], []).length > 0}>
             <TextField
               multiline

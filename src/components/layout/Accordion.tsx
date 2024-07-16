@@ -21,7 +21,7 @@ const AccordionHeader = styled.div`
 `;
 
 const AccordionContent = styled.div`
-  padding: 0 16px;
+  padding: 8px 16px;
 `;
 
 const ExpandIcon = styled(IconButton)<{ isOpen: boolean }>`
