@@ -5,7 +5,6 @@ import {
   IconButton,
   TextField,
   Button,
-  Paper,
   Typography,
   Dialog,
   DialogActions,
@@ -260,170 +259,166 @@ export const QuickTabs = () => {
 
   return (
     <Box sx={{ width: "100%", maxWidth: 1200, margin: "auto", p: 2 }}>
-      <Paper elevation={3} sx={{ mb: 2, p: 2 }}>
-        <Accordion title={get(parentTabs, [activeParentTab(), "title"], "")}>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-            <For each={parentTabs}>
-              {(parentTab, index) => (
-                <Button
-                  variant={activeParentTab() === index() ? "contained" : "outlined"}
-                  onClick={() => setActiveParentTab(index())}
-                  sx={{ textTransform: "none" }}
-                  draggable={true}
-                  onDragStart={(e) => onDragStartParent(e, index())}
-                  onDragOver={onDragOverParent}
-                  onDrop={(e) => onDropParent(e, index())}
-                >
-                  <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
-                  {editingTabId() === parentTab.id ? (
-                    <TextField
-                      value={parentTab.title}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        setParentTabs(
-                          produce((tabs) => {
-                            const t = tabs.find((t) => t.id === parentTab.id);
-                            if (t) t.title = e.target.value;
-                          })
-                        )
+      <Accordion title={get(parentTabs, [activeParentTab(), "title"], "")}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+          <For each={parentTabs}>
+            {(parentTab, index) => (
+              <Button
+                variant={activeParentTab() === index() ? "contained" : "outlined"}
+                onClick={() => setActiveParentTab(index())}
+                sx={{ textTransform: "none" }}
+                draggable={true}
+                onDragStart={(e) => onDragStartParent(e, index())}
+                onDragOver={onDragOverParent}
+                onDrop={(e) => onDropParent(e, index())}
+              >
+                <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
+                {editingTabId() === parentTab.id ? (
+                  <TextField
+                    value={parentTab.title}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      setParentTabs(
+                        produce((tabs) => {
+                          const t = tabs.find((t) => t.id === parentTab.id);
+                          if (t) t.title = e.target.value;
+                        })
+                      )
+                    }
+                    onBlur={() => finishEditingTabName(parentTab.id, null, parentTab.title)}
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        finishEditingTabName(parentTab.id, null, parentTab.title);
                       }
-                      onBlur={() => finishEditingTabName(parentTab.id, null, parentTab.title)}
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          finishEditingTabName(parentTab.id, null, parentTab.title);
-                        }
-                      }}
-                      size="small"
-                      autoFocus
-                    />
-                  ) : (
-                    <span onDblClick={() => startEditingTabName(parentTab.id)}>
-                      {parentTab.title}
-                    </span>
-                  )}
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openDeleteConfirmation(parentTab.id, null);
                     }}
-                    sx={{ ml: 1, color: "inherit" }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Button>
-              )}
-            </For>
-            <IconButton
-              size="small"
-              onClick={addNewParentTab}
-              sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
-            >
-              <AddIcon />
-            </IconButton>
-          </Box>
-        </Accordion>
-        <Show when={parentTabs.length > 0}>
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-            <For each={get(parentTabs, [activeParentTab(), "children"], [])}>
-              {(childTab, index) => (
-                <Button
-                  variant={activeChildTab() === index() ? "contained" : "outlined"}
-                  onClick={() => setActiveChildTab(index())}
-                  sx={{ textTransform: "none" }}
-                  draggable={true}
-                  onDragStart={(e) => onDragStartChild(e, index())}
-                  onDragOver={onDragOverChild}
-                  onDrop={(e) => onDropChild(e, index())}
+                    size="small"
+                    autoFocus
+                  />
+                ) : (
+                  <span onDblClick={() => startEditingTabName(parentTab.id)}>
+                    {parentTab.title}
+                  </span>
+                )}
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteConfirmation(parentTab.id, null);
+                  }}
+                  sx={{ ml: 1, color: "inherit" }}
                 >
-                  <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
-                  {editingTabId() === childTab.id ? (
-                    <TextField
-                      value={childTab.title}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) =>
-                        setParentTabs(
-                          produce((tabs) => {
-                            const p = tabs[activeParentTab()];
-                            const c = p.children.find((c) => c.id === childTab.id);
-                            if (c) c.title = e.target.value;
-                          })
-                        )
-                      }
-                      onBlur={() =>
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Button>
+            )}
+          </For>
+          <IconButton
+            size="small"
+            onClick={addNewParentTab}
+            sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
+          >
+            <AddIcon />
+          </IconButton>
+        </Box>
+      </Accordion>
+      <Show when={parentTabs.length > 0}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+          <For each={get(parentTabs, [activeParentTab(), "children"], [])}>
+            {(childTab, index) => (
+              <Button
+                variant={activeChildTab() === index() ? "contained" : "outlined"}
+                onClick={() => setActiveChildTab(index())}
+                sx={{ textTransform: "none" }}
+                draggable={true}
+                onDragStart={(e) => onDragStartChild(e, index())}
+                onDragOver={onDragOverChild}
+                onDrop={(e) => onDropChild(e, index())}
+              >
+                <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
+                {editingTabId() === childTab.id ? (
+                  <TextField
+                    value={childTab.title}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) =>
+                      setParentTabs(
+                        produce((tabs) => {
+                          const p = tabs[activeParentTab()];
+                          const c = p.children.find((c) => c.id === childTab.id);
+                          if (c) c.title = e.target.value;
+                        })
+                      )
+                    }
+                    onBlur={() =>
+                      finishEditingTabName(
+                        parentTabs[activeParentTab()].id,
+                        childTab.id,
+                        childTab.title
+                      )
+                    }
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
                         finishEditingTabName(
                           parentTabs[activeParentTab()].id,
                           childTab.id,
                           childTab.title
-                        )
+                        );
                       }
-                      onKeyPress={(e) => {
-                        if (e.key === "Enter") {
-                          finishEditingTabName(
-                            parentTabs[activeParentTab()].id,
-                            childTab.id,
-                            childTab.title
-                          );
-                        }
-                      }}
-                      size="small"
-                      autoFocus
-                    />
-                  ) : (
-                    <span onDblClick={() => startEditingTabName(childTab.id)}>
-                      {childTab.title}
-                    </span>
-                  )}
-                  <IconButton
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openDeleteConfirmation(parentTabs[activeParentTab()].id, childTab.id);
                     }}
-                    sx={{ ml: 1, color: "inherit" }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </Button>
-              )}
-            </For>
-            <IconButton
-              size="small"
-              onClick={() => addNewChildTab(parentTabs[activeParentTab()].id)}
-              sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
-            >
-              <AddIcon />
-            </IconButton>
-          </Box>
-          <Show when={get(parentTabs, [activeParentTab(), "children"], []).length > 0}>
-            <TextField
-              multiline
-              fullWidth
-              minRows={10}
-              value={get(parentTabs, [activeParentTab(), "children", activeChildTab(), "content"])}
-              onChange={(e) =>
-                updateTabContent(
-                  get(parentTabs, [activeParentTab(), "id"]),
-                  get(parentTabs, [activeParentTab(), "children", activeChildTab(), "id"]),
-                  e.target.value
-                )
-              }
-              sx={{ mb: 2 }}
-            />
-            <Button
-              variant="contained"
-              onClick={() =>
-                copyToClipboard(
-                  get(parentTabs, [activeParentTab(), "children", activeChildTab(), "content"])
-                )
-              }
-              startIcon={<ContentCopyIcon />}
-            >
-              Copy to Clipboard
-            </Button>
-          </Show>
+                    size="small"
+                    autoFocus
+                  />
+                ) : (
+                  <span onDblClick={() => startEditingTabName(childTab.id)}>{childTab.title}</span>
+                )}
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openDeleteConfirmation(parentTabs[activeParentTab()].id, childTab.id);
+                  }}
+                  sx={{ ml: 1, color: "inherit" }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Button>
+            )}
+          </For>
+          <IconButton
+            size="small"
+            onClick={() => addNewChildTab(parentTabs[activeParentTab()].id)}
+            sx={{ ml: "auto", display: "flex", justifyContent: "center" }}
+          >
+            <AddIcon />
+          </IconButton>
+        </Box>
+        <Show when={get(parentTabs, [activeParentTab(), "children"], []).length > 0}>
+          <TextField
+            multiline
+            fullWidth
+            minRows={10}
+            value={get(parentTabs, [activeParentTab(), "children", activeChildTab(), "content"])}
+            onChange={(e) =>
+              updateTabContent(
+                get(parentTabs, [activeParentTab(), "id"]),
+                get(parentTabs, [activeParentTab(), "children", activeChildTab(), "id"]),
+                e.target.value
+              )
+            }
+            sx={{ mb: 2 }}
+          />
+          <Button
+            variant="contained"
+            onClick={() =>
+              copyToClipboard(
+                get(parentTabs, [activeParentTab(), "children", activeChildTab(), "content"])
+              )
+            }
+            startIcon={<ContentCopyIcon />}
+          >
+            Copy to Clipboard
+          </Button>
         </Show>
-      </Paper>
+      </Show>
 
       {notificationMessage() && (
         <Typography sx={{ mt: 2, textAlign: "center" }}>{notificationMessage()}</Typography>
