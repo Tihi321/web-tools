@@ -85,8 +85,8 @@ export const LLMApiPrompter = () => {
     copyToClipboard(textToCopy, `${textToCopy} copied to clipboard`);
   };
 
-  const copyParamValue = (paramName: string, isSubItem: boolean = false) => {
-    const textToCopy = isSubItem ? `${paramName}.subItems` : `${paramName}.value`;
+  const copyParamValue = (isSubItem: boolean = false) => {
+    const textToCopy = isSubItem ? `.inputs` : `.value`;
     copyToClipboard(textToCopy, `${textToCopy} copied to clipboard`);
   };
 
@@ -233,7 +233,7 @@ export const LLMApiPrompter = () => {
         if (!values[paramIndex]) {
           values[paramIndex] = [];
         }
-        values[paramIndex].push({ value: "", subInputs: [] });
+        values[paramIndex].push({ value: "", inputs: [] });
       })
     );
   };
@@ -249,7 +249,7 @@ export const LLMApiPrompter = () => {
   const addSubInput = (paramIndex: number, arrayInputIndex: number) => {
     setPreviewValues(
       produce((values) => {
-        values[paramIndex][arrayInputIndex].subInputs.push("");
+        values[paramIndex][arrayInputIndex].inputs.push("");
       })
     );
   };
@@ -262,7 +262,7 @@ export const LLMApiPrompter = () => {
   ) => {
     setPreviewValues(
       produce((values) => {
-        values[paramIndex][arrayInputIndex].subInputs[subInputIndex] = value;
+        values[paramIndex][arrayInputIndex].inputs[subInputIndex] = value;
       })
     );
   };
@@ -312,7 +312,21 @@ export const LLMApiPrompter = () => {
     const activePromptData = prompts[activePrompt()];
     if (!activePromptData) return;
 
-    const paramValues = activePromptData.params.map((_, index) => previewValues[index] || "");
+    const paramValues = activePromptData.params.map((proxyValues, index) => {
+      const values = JSON.parse(JSON.stringify(proxyValues));
+
+      const value = previewValues[index];
+
+      if (!value) {
+        return "";
+      }
+
+      if (values.type === "array") {
+        return JSON.parse(JSON.stringify(previewValues[index]));
+      }
+
+      return previewValues[index];
+    });
 
     try {
       const safeFunction = new Function(
@@ -538,7 +552,7 @@ export const LLMApiPrompter = () => {
                                 >
                                   Add Sub-Input
                                 </Button>
-                                <For each={arrayInput.subInputs}>
+                                <For each={arrayInput.inputs}>
                                   {(subInput, subInputIndex) => (
                                     <TextField
                                       fullWidth
@@ -606,6 +620,8 @@ export const LLMApiPrompter = () => {
                           border: "1px solid #ccc",
                           borderRadius: "20px",
                           padding: "4px",
+                          display: "flex",
+                          gap: 2,
                         }}
                       >
                         <Chip
@@ -615,16 +631,16 @@ export const LLMApiPrompter = () => {
                           onDelete={() => copyParamName(param.name)}
                         />
                         <Chip
-                          label={`${param.name}.value (string)`}
-                          onClick={() => copyParamValue(param.name)}
+                          label={`value`}
+                          onClick={() => copyParamValue(false)}
                           deleteIcon={<ContentCopyIcon />}
-                          onDelete={() => copyParamValue(param.name)}
+                          onDelete={() => copyParamValue(false)}
                         />
                         <Chip
-                          label={`${param.name}.subItems (array)`}
-                          onClick={() => copyParamValue(param.name, true)}
+                          label={`inputs`}
+                          onClick={() => copyParamValue(true)}
                           deleteIcon={<ContentCopyIcon />}
-                          onDelete={() => copyParamValue(param.name, true)}
+                          onDelete={() => copyParamValue(true)}
                         />
                       </Box>
                     ) : (
