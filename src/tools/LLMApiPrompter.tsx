@@ -71,12 +71,19 @@ export const LLMApiPrompter = () => {
     );
   };
 
-  const getParamNames = () => {
-    return prompts[activePrompt()]?.params.map((_, index) => `param${index + 1}`) || [];
+  const getParamInfo = () => {
+    return (
+      prompts[activePrompt()]?.params.map((param, index) => ({
+        name: `param${index + 1}`,
+        type: param.type,
+        label: param.label,
+      })) || []
+    );
   };
 
-  const copyParamName = (paramName: string) => {
-    copyToClipboard(paramName, `${paramName} copied to clipboard`);
+  const copyParamName = (paramName: string, isSubItem: boolean = false) => {
+    const textToCopy = isSubItem ? `${paramName}.subItems` : paramName;
+    copyToClipboard(textToCopy, `${textToCopy} copied to clipboard`);
   };
 
   createEffect(() => {
@@ -586,14 +593,24 @@ export const LLMApiPrompter = () => {
               Available Parameters
             </Typography>
             <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
-              <For each={getParamNames()}>
-                {(paramName) => (
-                  <Chip
-                    label={paramName}
-                    onClick={() => copyParamName(paramName)}
-                    deleteIcon={<ContentCopyIcon />}
-                    onDelete={() => copyParamName(paramName)}
-                  />
+              <For each={getParamInfo()}>
+                {(param) => (
+                  <>
+                    <Chip
+                      label={`${param.name} (${param.type})`}
+                      onClick={() => copyParamName(param.name)}
+                      deleteIcon={<ContentCopyIcon />}
+                      onDelete={() => copyParamName(param.name)}
+                    />
+                    {param.type === "array" && (
+                      <Chip
+                        label={`${param.name}.subItems (array)`}
+                        onClick={() => copyParamName(param.name, true)}
+                        deleteIcon={<ContentCopyIcon />}
+                        onDelete={() => copyParamName(param.name, true)}
+                      />
+                    )}
+                  </>
                 )}
               </For>
             </Box>
