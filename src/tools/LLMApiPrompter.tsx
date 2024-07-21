@@ -609,32 +609,6 @@ export const LLMApiPrompter = () => {
                   </Box>
                 )}
               </For>
-              <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                <Button variant="contained" onClick={executeCallback}>
-                  Execute Callback
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ContentCopyIcon />}
-                  onClick={() =>
-                    copyToClipboard(
-                      prompts[activePrompt()]?.system || "",
-                      "System prompt copied to clipboard"
-                    )
-                  }
-                >
-                  Copy System Prompt
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<ContentCopyIcon />}
-                  onClick={() =>
-                    copyToClipboard(callbackOutput(), "Callback output copied to clipboard")
-                  }
-                >
-                  Copy Callback Output
-                </Button>
-              </Box>
             </Paper>
           </Accordion>
           <Paper sx={{ flex: 1, p: 2 }}>
@@ -660,6 +634,32 @@ export const LLMApiPrompter = () => {
               value={prompts[activePrompt()]?.callback || ""}
               onChange={(value: any) => updatePromptCallback(prompts[activePrompt()].id, value)}
             />
+            <Box sx={{ display: "flex", gap: 2, mb: 2, mt: 2 }}>
+              <Button variant="contained" onClick={executeCallback}>
+                Execute Callback
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() =>
+                  copyToClipboard(
+                    prompts[activePrompt()]?.system || "",
+                    "System prompt copied to clipboard"
+                  )
+                }
+              >
+                Copy System Prompt
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<ContentCopyIcon />}
+                onClick={() =>
+                  copyToClipboard(callbackOutput(), "Callback output copied to clipboard")
+                }
+              >
+                Copy Callback Output
+              </Button>
+            </Box>
           </Paper>
         </Box>
         <Paper sx={{ flex: 1, p: 2 }}>
