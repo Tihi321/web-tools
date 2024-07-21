@@ -50,6 +50,7 @@ export const App = () => {
   const selectTool = (toolName: string) => {
     setSelectedTool(toolName);
     history.pushState({}, "", `?tool=${toolName}`);
+    document.title = `Web Tools - ${startCase(replace(toolName, "-", " "))}`;
     toggleDrawer();
   };
 
@@ -57,6 +58,7 @@ export const App = () => {
     const initialTool = location.search.replace("?tool=", "");
     if (tools.includes(initialTool)) {
       setSelectedTool(initialTool);
+      document.title = `Web Tools - ${startCase(replace(initialTool, "-", " "))}`;
     }
   });
 

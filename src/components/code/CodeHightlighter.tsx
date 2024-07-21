@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, type Component } from "solid-js";
+import { createEffect, createMemo, createSignal, onMount, type Component } from "solid-js";
 
 /**
  * @see https://prismjs.com/#supported-languages
@@ -20,29 +20,43 @@ const getPrismjs = () => {
   return PrismJs;
 };
 
+const getHighlightedCode = (value: string) => {
+  const PrismJs = getPrismjs();
+  const grammar = PrismJs.languages[Language.TYPESCRIPT];
+  if (!grammar) {
+    return;
+  }
+  const result = PrismJs.highlight(value, grammar, Language.TYPESCRIPT);
+  return result;
+};
+
+const highlightAll = () => {
+  const PrismJs = getPrismjs();
+  PrismJs.highlightAll();
+};
+
 type Props = {
   value: any;
   onChange: (value: string) => void;
 };
 
 export const Highlight: Component<Props> = (props) => {
-  const [inputValue, setInputValue] = createSignal<string | undefined>(props.value);
-  const highlightedCode = createMemo<string | undefined>(() => {
-    if (!inputValue()) {
-      return;
-    }
-    const PrismJs = getPrismjs();
-    const grammar = PrismJs.languages[Language.TYPESCRIPT];
-    if (!grammar) {
-      return;
-    }
-    const result = PrismJs.highlight(inputValue(), grammar, Language.TYPESCRIPT);
-    return result;
+  const [highlightedCode, setHighlightedCode] = createSignal<string | undefined>();
+
+  onMount(() => {
+    const code = getHighlightedCode(props.value);
+    setHighlightedCode(code);
+    highlightAll();
   });
 
-  createEffect(() => {
-    setInputValue(props.value);
-  });
+  const onBlur = (event: Event) => {
+    const target = event.target as HTMLDivElement;
+    const value = target.textContent || "";
+    const code = getHighlightedCode(value);
+    setHighlightedCode(code);
+    props.onChange(value);
+    highlightAll();
+  };
 
   return (
     <pre style={{ "min-height": "56px" }}>
@@ -51,12 +65,7 @@ export const Highlight: Component<Props> = (props) => {
         class={`language-${Language.TYPESCRIPT}`}
         innerHTML={highlightedCode()}
         contentEditable={true}
-        onBlur={(event) => {
-          const target = event.target as HTMLDivElement;
-          const value = target.textContent || "";
-          setInputValue(value);
-          props.onChange(inputValue() || "");
-        }}
+        onBlur={onBlur}
       />
     </pre>
   );
