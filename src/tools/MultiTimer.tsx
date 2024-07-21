@@ -29,11 +29,11 @@ export const MultiTimer = () => {
       id: timer.id,
       duration: timer.duration,
     }));
-    localStorage.setItem("multiTimers", JSON.stringify(storedTimers));
+    localStorage.setItem("webtools/multitimers", JSON.stringify(storedTimers));
   };
 
   const loadTimersFromLocalStorage = (): Timer[] => {
-    const storedTimers = localStorage.getItem("multiTimers");
+    const storedTimers = localStorage.getItem("webtools/multitimers");
     if (storedTimers) {
       const parsedTimers: StoredTimer[] = JSON.parse(storedTimers);
       return parsedTimers.map((timer) => ({

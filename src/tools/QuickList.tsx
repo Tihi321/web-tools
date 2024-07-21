@@ -20,7 +20,7 @@ export const QuickList = () => {
 
   // Load items from local storage on component mount
   createEffect(() => {
-    const storedItems = localStorage.getItem("quickListItems");
+    const storedItems = localStorage.getItem("webtools/quicklistitems");
     if (storedItems) {
       setItems(JSON.parse(storedItems));
     }
@@ -28,7 +28,7 @@ export const QuickList = () => {
 
   // Save items to local storage whenever they change
   createEffect(() => {
-    localStorage.setItem("quickListItems", JSON.stringify(items));
+    localStorage.setItem("webtools/quicklistitems", JSON.stringify(items));
   });
 
   const addItem = () => {

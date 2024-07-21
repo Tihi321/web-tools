@@ -21,6 +21,7 @@ import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
 import { SpeakIt } from "./tools/SpeakIt";
+import { LLMApiPrompter } from "./tools/LLMApiPrompter";
 import { Footer } from "./components/layout/Footer";
 
 const Container = styled("div")`
@@ -37,6 +38,7 @@ const tools: string[] = [
   "quick-tabs",
   "json-validator",
   "json-stringifier",
+  "llm-api-prompter",
 ];
 
 export const App = () => {
@@ -99,6 +101,7 @@ export const App = () => {
           {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
+          {selectedTool() === "llm-api-prompter" && <LLMApiPrompter />}
         </Show>
       </Box>
       <Footer />

@@ -47,7 +47,7 @@ export const QuickTabs = () => {
 
   // Load tabs from local storage on component mount
   createEffect(() => {
-    const storedTabs = localStorage.getItem("quickTabs");
+    const storedTabs = localStorage.getItem("webtools/quicktabs");
     if (storedTabs) {
       setParentTabs(JSON.parse(storedTabs));
     } else {
@@ -58,7 +58,7 @@ export const QuickTabs = () => {
 
   // Save tabs to local storage whenever they change
   createEffect(() => {
-    localStorage.setItem("quickTabs", JSON.stringify(parentTabs));
+    localStorage.setItem("webtools/quicktabs", JSON.stringify(parentTabs));
   });
 
   const addNewParentTab = () => {
