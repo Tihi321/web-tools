@@ -4,6 +4,7 @@ import { Paper, Typography, IconButton } from "@suid/material";
 import ExpandMoreIcon from "@suid/icons-material/ExpandMore";
 
 interface AccordionProps {
+  open?: boolean;
   title: string;
   children: JSX.Element;
 }
@@ -30,7 +31,7 @@ const ExpandIcon = styled(IconButton)<{ isOpen: boolean }>`
 `;
 
 export const Accordion = (props: AccordionProps) => {
-  const [isOpen, setIsOpen] = createSignal(false);
+  const [isOpen, setIsOpen] = createSignal(props?.open ?? false);
 
   const toggleAccordion = () => {
     setIsOpen(!isOpen());
