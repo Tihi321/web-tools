@@ -81,8 +81,12 @@ export const LLMApiPrompter = () => {
     );
   };
 
-  const copyParamName = (paramName: string, isSubItem: boolean = false) => {
-    const textToCopy = isSubItem ? `${paramName}.subItems` : paramName;
+  const copyParamName = (textToCopy: string) => {
+    copyToClipboard(textToCopy, `${textToCopy} copied to clipboard`);
+  };
+
+  const copyParamValue = (paramName: string, isSubItem: boolean = false) => {
+    const textToCopy = isSubItem ? `${paramName}.subItems` : `${paramName}.value`;
     copyToClipboard(textToCopy, `${textToCopy} copied to clipboard`);
   };
 
@@ -592,22 +596,43 @@ export const LLMApiPrompter = () => {
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Available Parameters
             </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2, alignItems: "center" }}>
               <For each={getParamInfo()}>
                 {(param) => (
                   <>
-                    <Chip
-                      label={`${param.name} (${param.type})`}
-                      onClick={() => copyParamName(param.name)}
-                      deleteIcon={<ContentCopyIcon />}
-                      onDelete={() => copyParamName(param.name)}
-                    />
-                    {param.type === "array" && (
+                    {param.type === "array" ? (
+                      <Box
+                        sx={{
+                          border: "1px solid #ccc",
+                          borderRadius: "20px",
+                          padding: "4px",
+                        }}
+                      >
+                        <Chip
+                          label={`${param.name} (${param.type})`}
+                          onClick={() => copyParamName(param.name)}
+                          deleteIcon={<ContentCopyIcon />}
+                          onDelete={() => copyParamName(param.name)}
+                        />
+                        <Chip
+                          label={`${param.name}.value (string)`}
+                          onClick={() => copyParamValue(param.name)}
+                          deleteIcon={<ContentCopyIcon />}
+                          onDelete={() => copyParamValue(param.name)}
+                        />
+                        <Chip
+                          label={`${param.name}.subItems (array)`}
+                          onClick={() => copyParamValue(param.name, true)}
+                          deleteIcon={<ContentCopyIcon />}
+                          onDelete={() => copyParamValue(param.name, true)}
+                        />
+                      </Box>
+                    ) : (
                       <Chip
-                        label={`${param.name}.subItems (array)`}
-                        onClick={() => copyParamName(param.name, true)}
+                        label={`${param.name} (${param.type})`}
+                        onClick={() => copyParamName(param.name)}
                         deleteIcon={<ContentCopyIcon />}
-                        onDelete={() => copyParamName(param.name, true)}
+                        onDelete={() => copyParamName(param.name)}
                       />
                     )}
                   </>

@@ -1,4 +1,4 @@
-import { createEffect, createMemo, createSignal, onMount, type Component } from "solid-js";
+import { createSignal, onMount, type Component } from "solid-js";
 
 /**
  * @see https://prismjs.com/#supported-languages
