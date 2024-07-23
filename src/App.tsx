@@ -23,6 +23,7 @@ import { MultiTimer } from "./tools/MultiTimer";
 import { SpeakIt } from "./tools/SpeakIt";
 import { LLMApiPrompter } from "./tools/LLMApiPrompter";
 import { CharacterCounter } from "./tools/CharacterCounter";
+import { VoiceNotes } from "./tools/VoiceNotes";
 import { Footer } from "./components/layout/Footer";
 
 const Container = styled("div")`
@@ -41,6 +42,7 @@ const tools: string[] = [
   "json-stringifier",
   "llm-api-prompter",
   "character-counter",
+  "voice-notes",
 ];
 
 export const App = () => {
@@ -107,6 +109,7 @@ export const App = () => {
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
           {selectedTool() === "llm-api-prompter" && <LLMApiPrompter />}
           {selectedTool() === "character-counter" && <CharacterCounter />}
+          {selectedTool() === "voice-notes" && <VoiceNotes />}
         </Show>
       </Box>
       <Footer />
