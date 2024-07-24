@@ -17,7 +17,7 @@ import AddIcon from "@suid/icons-material/Add";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import get from "lodash/get";
-import { Accordion } from "../components/layout/Accordion"; // Import the custom Accordion component
+import { Accordion } from "../components/containers/Accordion"; // Import the custom Accordion component
 
 interface TabData {
   id: number;

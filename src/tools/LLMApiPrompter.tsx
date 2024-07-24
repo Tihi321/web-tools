@@ -17,7 +17,7 @@ import AddIcon from "@suid/icons-material/Add";
 import CloseIcon from "@suid/icons-material/Close";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
-import { Accordion } from "../components/layout/Accordion";
+import { Accordion } from "../components/containers/Accordion";
 import { Snackbar } from "../components/toasts/Snackbar";
 import { Highlight } from "../components/code/CodeHightlighter";
 

@@ -1,19 +1,6 @@
 import { styled } from "solid-styled-components";
 
-// Footer Component
-const StyledFooter = styled("footer")`
-  margin-top: auto;
-  background-color: ${(props) => props?.theme?.colors.darkBackground};
-  color: ${(props) => props?.theme?.colors.text};
-  display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: space-between;
-  width: 100%;
-  padding: 8px;
-`;
-
-const InfodFooter = styled("div")`
+const InfoFooter = styled("div")`
   display: flex;
   gap: 16px;
   align-items: center;
@@ -22,22 +9,23 @@ const InfodFooter = styled("div")`
 const Websites = styled("div")`
   display: flex;
   flex-direction: column;
-  color: ${(props) => props?.theme?.colors.text};
+  color: inherit;
   gap: 2px;
   font-size: 12px;
 
   a {
-    color: ${(props) => props?.theme?.colors.text};
+    color: inherit;
     text-decoration: none;
   }
 `;
 
 const Socials = styled("div")`
+  margin-left: auto;
   display: flex;
   gap: 6px;
 
   a {
-    color: ${(props) => props?.theme?.colors.text};
+    color: inherit;
   }
 
   svg {
@@ -48,8 +36,8 @@ const Socials = styled("div")`
 
 export const Footer = () => {
   return (
-    <StyledFooter>
-      <InfodFooter>
+    <>
+      <InfoFooter>
         <Websites>
           <div>
             Blog: <a href="https://tihomir-selak.from.hr/">tihomir-selak.from.hr</a>
@@ -58,8 +46,7 @@ export const Footer = () => {
             Web: <a href="https://kobilica.hr">kobilica.hr</a>
           </div>
         </Websites>
-      </InfodFooter>
-
+      </InfoFooter>
       <Socials>
         <a href="mailto:tihomir.selak@outlook.com" target="_blank">
           <svg
@@ -123,6 +110,6 @@ export const Footer = () => {
           </svg>
         </a>
       </Socials>
-    </StyledFooter>
+    </>
   );
 };

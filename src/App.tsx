@@ -24,7 +24,8 @@ import { SpeakIt } from "./tools/SpeakIt";
 import { LLMApiPrompter } from "./tools/LLMApiPrompter";
 import { CharacterCounter } from "./tools/CharacterCounter";
 import { VoiceNotes } from "./tools/VoiceNotes";
-import { Footer } from "./components/layout/Footer";
+import { getURLParams } from "./utils/url";
+import { Frame } from "./components/layout/Frame";
 
 const Container = styled("div")`
   display: flex;
@@ -46,73 +47,39 @@ const tools: string[] = [
 ];
 
 export const App = () => {
-  const [isDrawerOpen, setIsDrawerOpen] = createSignal<boolean>(false);
-  const [selectedTool, setSelectedTool] = createSignal<string>("stopwatch");
-
-  const toggleDrawer = () => setIsDrawerOpen(!isDrawerOpen());
-
-  const selectTool = (toolName: string) => {
-    setSelectedTool(toolName);
-    history.pushState({}, "", `?tool=${toolName}`);
-    document.title = `Web Tools - ${startCase(replace(toolName, "-", " "))}`;
-    toggleDrawer();
-  };
+  const [selectedTool, setSelectedTool] = createSignal<string>();
 
   onMount(() => {
-    const initialTool = location.search.replace("?tool=", "");
-    if (tools.includes(initialTool)) {
-      setSelectedTool(initialTool);
-      document.title = `Web Tools - ${startCase(replace(initialTool, "-", " "))}`;
-    }
+    const initialTool = getURLParams("tool");
+    setSelectedTool(initialTool || "stopwatch");
+    document.title = `Web Tools - ${startCase(replace(initialTool || "stopwatch", "-", " "))}`;
   });
 
   return (
     <Container>
-      <AppBar position="static">
-        <Toolbar>
-          <IconButton
-            size="large"
-            edge="start"
-            color="inherit"
-            aria-label="menu"
-            sx={{ mr: 2 }}
-            onClick={toggleDrawer}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Web Tools
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      <Drawer anchor="left" open={isDrawerOpen()} onClose={toggleDrawer}>
-        <List sx={{ width: "250px" }}>
-          <For each={tools}>
-            {(toolName, index) => (
-              <ListItemButton onClick={() => selectTool(toolName)}>
-                {index() + 1}. <ListItemText primary={startCase(replace(toolName, "-", " "))} />
-              </ListItemButton>
-            )}
-          </For>
-        </List>
-      </Drawer>
-
-      <Box component="main" sx={{ p: 3 }}>
-        <Show when={selectedTool()}>
-          {selectedTool() === "stopwatch" && <Stopwatch />}
-          {selectedTool() === "multi-timer" && <MultiTimer />}
-          {selectedTool() === "speak-it" && <SpeakIt />}
-          {selectedTool() === "quick-list" && <QuickList />}
-          {selectedTool() === "quick-tabs" && <QuickTabs />}
-          {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
-          {selectedTool() === "json-stringifier" && <JsonStringifier />}
-          {selectedTool() === "llm-api-prompter" && <LLMApiPrompter />}
-          {selectedTool() === "character-counter" && <CharacterCounter />}
-          {selectedTool() === "voice-notes" && <VoiceNotes />}
-        </Show>
-      </Box>
-      <Footer />
+      <Frame
+        tools={tools}
+        onToolChange={(toolName: string) => {
+          history.pushState({}, "", `?tool=${toolName}`);
+          document.title = `Web Tools - ${startCase(replace(toolName, "-", " "))}`;
+          setSelectedTool(toolName);
+        }}
+      >
+        <Box component="main" sx={{ p: 3 }}>
+          <Show when={selectedTool()}>
+            {selectedTool() === "stopwatch" && <Stopwatch />}
+            {selectedTool() === "multi-timer" && <MultiTimer />}
+            {selectedTool() === "speak-it" && <SpeakIt />}
+            {selectedTool() === "quick-list" && <QuickList />}
+            {selectedTool() === "quick-tabs" && <QuickTabs />}
+            {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
+            {selectedTool() === "json-stringifier" && <JsonStringifier />}
+            {selectedTool() === "llm-api-prompter" && <LLMApiPrompter />}
+            {selectedTool() === "character-counter" && <CharacterCounter />}
+            {selectedTool() === "voice-notes" && <VoiceNotes />}
+          </Show>
+        </Box>
+      </Frame>
     </Container>
   );
 };
