@@ -1,5 +1,4 @@
 import { createSignal, Show, onMount } from "solid-js";
-import { Box } from "@suid/material";
 import replace from "lodash/replace";
 import startCase from "lodash/startCase";
 import { styled } from "solid-styled-components";
