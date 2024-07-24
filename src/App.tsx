@@ -14,6 +14,7 @@ import { CharacterCounter } from "./tools/CharacterCounter";
 import { VoiceNotes } from "./tools/VoiceNotes";
 import { getURLParams } from "./utils/url";
 import { Frame } from "./components/layout/Frame";
+import { Embed } from "./components/embed/Embed";
 
 const Container = styled("div")`
   display: flex;
@@ -22,15 +23,16 @@ const Container = styled("div")`
 `;
 
 const tools: string[] = [
+  "quick-tabs",
+  "quick-list",
+  "speak-it",
+  "voice-notes",
+  "character-counter",
+  "code-playground",
   "stopwatch",
   "multi-timer",
-  "speak-it",
-  "quick-list",
-  "quick-tabs",
   "json-validator",
   "json-stringifier",
-  "character-counter",
-  "voice-notes",
 ];
 
 export const App = () => {
@@ -38,8 +40,8 @@ export const App = () => {
 
   onMount(() => {
     const initialTool = getURLParams("tool");
-    setSelectedTool(initialTool || "stopwatch");
-    document.title = `Web Tools - ${startCase(replace(initialTool || "stopwatch", "-", " "))}`;
+    setSelectedTool(initialTool || "quick-tabs");
+    document.title = `Web Tools - ${startCase(replace(initialTool || "quick-tabs", "-", " "))}`;
   });
 
   return (
@@ -52,19 +54,20 @@ export const App = () => {
           setSelectedTool(toolName);
         }}
       >
-        <Box component="main" sx={{ p: 3 }}>
-          <Show when={selectedTool()}>
-            {selectedTool() === "stopwatch" && <Stopwatch />}
-            {selectedTool() === "multi-timer" && <MultiTimer />}
-            {selectedTool() === "speak-it" && <SpeakIt />}
-            {selectedTool() === "quick-list" && <QuickList />}
-            {selectedTool() === "quick-tabs" && <QuickTabs />}
-            {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
-            {selectedTool() === "json-stringifier" && <JsonStringifier />}
-            {selectedTool() === "character-counter" && <CharacterCounter />}
-            {selectedTool() === "voice-notes" && <VoiceNotes />}
-          </Show>
-        </Box>
+        <Show when={selectedTool()}>
+          {selectedTool() === "stopwatch" && <Stopwatch />}
+          {selectedTool() === "code-playground" && (
+            <Embed src="https://tihi321.github.io/web_playground" title="Code" />
+          )}
+          {selectedTool() === "multi-timer" && <MultiTimer />}
+          {selectedTool() === "speak-it" && <SpeakIt />}
+          {selectedTool() === "quick-list" && <QuickList />}
+          {selectedTool() === "quick-tabs" && <QuickTabs />}
+          {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
+          {selectedTool() === "json-stringifier" && <JsonStringifier />}
+          {selectedTool() === "character-counter" && <CharacterCounter />}
+          {selectedTool() === "voice-notes" && <VoiceNotes />}
+        </Show>
       </Frame>
     </Container>
   );

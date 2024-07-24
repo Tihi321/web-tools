@@ -58,6 +58,7 @@ const Content = styled.div<{ focus: boolean }>`
   padding-top: ${(props) => (props.focus ? "0" : "48px")};
   padding-bottom: ${(props) => (props.focus ? "0" : "38px")};
   box-sizing: border-box;
+  display: flex;
 `;
 
 interface FrameProps {

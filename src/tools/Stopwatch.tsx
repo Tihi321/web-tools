@@ -34,7 +34,15 @@ export const Stopwatch = () => {
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 3,
+        margin: "auto",
+      }}
+    >
       <Typography variant="h2" component="div">
         {formatTime(time())}
       </Typography>
