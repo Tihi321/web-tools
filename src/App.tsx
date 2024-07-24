@@ -10,7 +10,6 @@ import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
 import { SpeakIt } from "./tools/SpeakIt";
-import { LLMApiPrompter } from "./tools/LLMApiPrompter";
 import { CharacterCounter } from "./tools/CharacterCounter";
 import { VoiceNotes } from "./tools/VoiceNotes";
 import { getURLParams } from "./utils/url";
@@ -30,7 +29,6 @@ const tools: string[] = [
   "quick-tabs",
   "json-validator",
   "json-stringifier",
-  "llm-api-prompter",
   "character-counter",
   "voice-notes",
 ];
@@ -63,7 +61,6 @@ export const App = () => {
             {selectedTool() === "quick-tabs" && <QuickTabs />}
             {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
             {selectedTool() === "json-stringifier" && <JsonStringifier />}
-            {selectedTool() === "llm-api-prompter" && <LLMApiPrompter />}
             {selectedTool() === "character-counter" && <CharacterCounter />}
             {selectedTool() === "voice-notes" && <VoiceNotes />}
           </Show>
