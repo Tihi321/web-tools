@@ -1,16 +1,5 @@
-import { createSignal, Show, For, onMount } from "solid-js";
-import {
-  AppBar,
-  Toolbar,
-  Drawer,
-  List,
-  ListItemButton,
-  ListItemText,
-  IconButton,
-  Typography,
-  Box,
-} from "@suid/material";
-import MenuIcon from "@suid/icons-material/Menu";
+import { createSignal, Show, onMount } from "solid-js";
+import { Box } from "@suid/material";
 import replace from "lodash/replace";
 import startCase from "lodash/startCase";
 import { styled } from "solid-styled-components";
