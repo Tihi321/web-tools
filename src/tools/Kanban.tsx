@@ -1,5 +1,5 @@
-import { createSignal, createEffect, For, Show } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { createSignal, For, Show, onMount } from "solid-js";
+import { createStore } from "solid-js/store";
 import {
   Box,
   Button,
@@ -17,6 +17,7 @@ import AddIcon from "@suid/icons-material/Add";
 import DeleteIcon from "@suid/icons-material/Delete";
 import EditIcon from "@suid/icons-material/Edit";
 import { styled } from "solid-styled-components";
+import { filter, find, get, map } from "lodash";
 
 const Container = styled(Box)`
   display: flex;
@@ -69,7 +70,7 @@ interface Board {
 }
 
 export const Kanban = () => {
-  const [boards, setBoards] = createStore<Board[]>([]);
+  const [boards, setBoards] = createSignal<Board[]>([]);
   const [activeBoard, setActiveBoard] = createSignal<string | null>(null);
   const [newBoardTitle, setNewBoardTitle] = createSignal("");
   const [newColumnTitle, setNewColumnTitle] = createSignal("");
@@ -84,12 +85,13 @@ export const Kanban = () => {
   const [activeColumnId, setActiveColumnId] = createSignal<string | null>(null);
 
   // Load boards from localStorage on component mount
-  createEffect(() => {
+  onMount(() => {
     const storedBoards = localStorage.getItem("webtools/kanbanboards");
     if (storedBoards) {
-      setBoards(JSON.parse(storedBoards));
-      if (boards.length > 0) {
-        setActiveBoard(boards[0].id);
+      const parsedBoards: Board[] = JSON.parse(storedBoards);
+      setBoards(parsedBoards);
+      if (parsedBoards.length > 0) {
+        setActiveBoard(parsedBoards[0].id);
       }
     } else {
       // Initialize with a default board if none exists
@@ -107,29 +109,25 @@ export const Kanban = () => {
     }
   });
 
-  // Save boards to localStorage whenever they change
-  createEffect(() => {
-    localStorage.setItem("webtools/kanbanboards", JSON.stringify(boards));
-  });
-
   const addBoard = () => {
     if (newBoardTitle()) {
-      setBoards(
-        produce((boards) => {
-          boards.push({
-            id: Date.now().toString(),
-            title: newBoardTitle(),
-            columns: [
-              { id: "todo", title: "To Do", tasks: [], isDefault: true },
-              { id: "inprogress", title: "In Progress", tasks: [], isDefault: true },
-              { id: "done", title: "Done", tasks: [], isDefault: true },
-            ],
-          });
-        })
-      );
+      const newState = [
+        ...boards(),
+        {
+          id: Date.now().toString(),
+          title: newBoardTitle(),
+          columns: [
+            { id: "todo", title: "To Do", tasks: [], isDefault: true },
+            { id: "inprogress", title: "In Progress", tasks: [], isDefault: true },
+            { id: "done", title: "Done", tasks: [], isDefault: true },
+          ],
+        },
+      ];
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setNewBoardTitle("");
       if (!activeBoard()) {
-        setActiveBoard(boards[boards.length - 1].id);
+        setActiveBoard(get(boards(), [boards().length - 1, "id"]));
       }
     }
   };
@@ -141,10 +139,13 @@ export const Kanban = () => {
 
   const confirmRemoveBoard = () => {
     if (boardToDelete()) {
-      setBoards(boards.filter((board) => board.id !== boardToDelete()));
+      const newState = filter(boards(), (board) => board.id !== boardToDelete());
       if (activeBoard() === boardToDelete()) {
-        setActiveBoard(boards.length > 1 ? boards[0].id : null);
+        const newActiveBoard = newState.find((board) => board.id !== boardToDelete());
+        setActiveBoard(newActiveBoard?.id || null);
       }
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setIsDeleteBoardDialogOpen(false);
       setBoardToDelete(null);
     }
@@ -152,19 +153,19 @@ export const Kanban = () => {
 
   const addColumn = () => {
     if (newColumnTitle() && activeBoard()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            board.columns.push({
-              id: Date.now().toString(),
-              title: newColumnTitle(),
-              tasks: [],
-              isDefault: false,
-            });
-          }
-        })
-      );
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          board.columns.push({
+            id: Date.now().toString(),
+            title: newColumnTitle(),
+            tasks: [],
+            isDefault: false,
+          });
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setNewColumnTitle("");
     }
   };
@@ -176,14 +177,17 @@ export const Kanban = () => {
 
   const confirmRemoveColumn = () => {
     if (columnToDelete() && activeBoard()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            board.columns = board.columns.filter((column) => column.id !== columnToDelete());
-          }
-        })
-      );
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          board.columns = filter(
+            get(board, ["columns"]),
+            (column) => column.id !== columnToDelete()
+          );
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setIsDeleteColumnDialogOpen(false);
       setColumnToDelete(null);
     }
@@ -199,21 +203,21 @@ export const Kanban = () => {
 
   const handleAddTask = () => {
     if (newTaskTitle() && activeBoard() && activeColumnId()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            const column = board.columns.find((c) => c.id === activeColumnId());
-            if (column) {
-              column.tasks.push({
-                id: Date.now().toString(),
-                title: newTaskTitle(),
-                description: newTaskDescription(),
-              });
-            }
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          const column = find(get(board, ["columns"]), (c) => c.id === activeColumnId());
+          if (column) {
+            column.tasks.push({
+              id: Date.now().toString(),
+              title: newTaskTitle(),
+              description: newTaskDescription(),
+            });
           }
-        })
-      );
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setNewTaskTitle("");
       setNewTaskDescription("");
       setIsTaskDialogOpen(false);
@@ -230,24 +234,24 @@ export const Kanban = () => {
 
   const handleEditTask = () => {
     if (editingTask() && activeBoard()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            for (const column of board.columns) {
-              const taskIndex = column.tasks.findIndex((t) => t.id === editingTask()?.id);
-              if (taskIndex !== -1) {
-                column.tasks[taskIndex] = {
-                  ...column.tasks[taskIndex],
-                  title: newTaskTitle(),
-                  description: newTaskDescription(),
-                };
-                break;
-              }
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          for (const column of board.columns) {
+            const taskIndex = column.tasks.findIndex((t) => t.id === editingTask()?.id);
+            if (taskIndex !== -1) {
+              column.tasks[taskIndex] = {
+                ...column.tasks[taskIndex],
+                title: newTaskTitle(),
+                description: newTaskDescription(),
+              };
+              break;
             }
           }
-        })
-      );
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
       setIsTaskDialogOpen(false);
       setEditingTask(null);
     }
@@ -255,38 +259,38 @@ export const Kanban = () => {
 
   const removeTask = (columnId: string, taskId: string) => {
     if (activeBoard()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            const column = board.columns.find((c) => c.id === columnId);
-            if (column) {
-              column.tasks = column.tasks.filter((t) => t.id !== taskId);
-            }
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          const column = board.columns.find((c) => c.id === columnId);
+          if (column) {
+            column.tasks = column.tasks.filter((t) => t.id !== taskId);
           }
-        })
-      );
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
     }
   };
 
   const moveTask = (fromColumnId: string, toColumnId: string, taskId: string) => {
     if (activeBoard()) {
-      setBoards(
-        produce((boards) => {
-          const board = boards.find((b) => b.id === activeBoard());
-          if (board) {
-            const fromColumn = board.columns.find((c) => c.id === fromColumnId);
-            const toColumn = board.columns.find((c) => c.id === toColumnId);
-            if (fromColumn && toColumn) {
-              const taskIndex = fromColumn.tasks.findIndex((t) => t.id === taskId);
-              if (taskIndex !== -1) {
-                const [task] = fromColumn.tasks.splice(taskIndex, 1);
-                toColumn.tasks.push(task);
-              }
+      const newState = map(boards(), (board) => {
+        if (board.id === activeBoard()) {
+          const fromColumn = board.columns.find((c) => c.id === fromColumnId);
+          const toColumn = board.columns.find((c) => c.id === toColumnId);
+          if (fromColumn && toColumn) {
+            const taskIndex = fromColumn.tasks.findIndex((t) => t.id === taskId);
+            if (taskIndex !== -1) {
+              const [task] = fromColumn.tasks.splice(taskIndex, 1);
+              toColumn.tasks.push(task);
             }
           }
-        })
-      );
+        }
+        return board;
+      });
+      setBoards(newState);
+      localStorage.setItem("webtools/kanbanboards", JSON.stringify(newState));
     }
   };
 
@@ -311,7 +315,7 @@ export const Kanban = () => {
         </Box>
 
         <Box sx={{ display: "flex", flex: 1, gap: 2, mb: 2 }}>
-          <For each={boards}>
+          <For each={boards()}>
             {(board) => (
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Button
@@ -340,7 +344,7 @@ export const Kanban = () => {
             </Button>
           </Box>
           <BoardContainer>
-            <For each={boards.find((b) => b.id === activeBoard())?.columns}>
+            <For each={boards().find((b) => b.id === activeBoard())?.columns}>
               {(column) => (
                 <Column>
                   <CardContent
