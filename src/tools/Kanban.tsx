@@ -16,6 +16,7 @@ import {
 import AddIcon from "@suid/icons-material/Add";
 import DeleteIcon from "@suid/icons-material/Delete";
 import EditIcon from "@suid/icons-material/Edit";
+import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { isEmpty } from "lodash";
 
@@ -67,6 +68,14 @@ const TaskCard = styled(Card)`
   cursor: pointer;
 `;
 
+const BoardButton = styled(Button)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-transform: none;
+`;
+
 export const Kanban = () => {
   const [store, setStore] = createStore({
     boards: [] as Board[],
@@ -82,6 +91,7 @@ export const Kanban = () => {
     boardToDelete: null as string | null,
     columnToDelete: null as string | null,
     activeColumnId: null as string | null,
+    draggedBoardId: null as string | null,
   });
 
   onMount(() => {
@@ -348,6 +358,37 @@ export const Kanban = () => {
     }
   };
 
+  const onDragStartBoard = (e: DragEvent, boardId: string) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("text/plain", boardId);
+    }
+    setStore("draggedBoardId", boardId);
+  };
+
+  const onDragOverBoard = (e: DragEvent) => {
+    e.preventDefault();
+  };
+
+  const onDropBoard = (e: DragEvent, targetBoardId: string) => {
+    e.preventDefault();
+    const draggedBoardId = store.draggedBoardId;
+    if (draggedBoardId && draggedBoardId !== targetBoardId) {
+      const draggedIndex = store.boards.findIndex((b) => b.id === draggedBoardId);
+      const targetIndex = store.boards.findIndex((b) => b.id === targetBoardId);
+
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        setStore("boards", (boards) => {
+          const newBoards = [...boards];
+          const [removed] = newBoards.splice(draggedIndex, 1);
+          newBoards.splice(targetIndex, 0, removed);
+          return newBoards;
+        });
+        saveToLocalStorage();
+      }
+    }
+    setStore("draggedBoardId", null);
+  };
+
   return (
     <Container>
       <Box sx={{ maxWidth: "980px", width: "100%", textAlign: "center" }}>
@@ -368,19 +409,37 @@ export const Kanban = () => {
           </Box>
         </Box>
 
-        <Box sx={{ display: "flex", flex: 1, gap: 2, mb: 2 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
           <For each={store.boards}>
             {(board) => (
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Button
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  width: "200px",
+                }}
+                draggable
+                onDragStart={(e) => onDragStartBoard(e, board.id)}
+                onDragOver={onDragOverBoard}
+                onDrop={(e) => onDropBoard(e, board.id)}
+              >
+                <BoardButton
                   variant={store.activeBoard === board.id ? "contained" : "outlined"}
                   onClick={() => setStore("activeBoard", board.id)}
+                  sx={{ width: "100%", justifyContent: "space-between" }}
                 >
+                  <DragIndicatorIcon sx={{ mr: 1, cursor: "move" }} />
                   {board.title}
-                </Button>
-                <IconButton size="small" onClick={() => removeBoard(board.id)}>
-                  <DeleteIcon />
-                </IconButton>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeBoard(board.id);
+                    }}
+                  >
+                    <DeleteIcon />
+                  </IconButton>
+                </BoardButton>
               </Box>
             )}
           </For>
