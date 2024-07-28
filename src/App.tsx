@@ -3,7 +3,6 @@ import replace from "lodash/replace";
 import startCase from "lodash/startCase";
 import { styled } from "solid-styled-components";
 import { Stopwatch } from "./tools/Stopwatch";
-import { QuickList } from "./tools/QuickList";
 import { QuickTabs } from "./tools/QuickTabs";
 import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
@@ -14,6 +13,7 @@ import { VoiceNotes } from "./tools/VoiceNotes";
 import { getURLParams } from "./utils/url";
 import { Frame } from "./components/layout/Frame";
 import { Embed } from "./components/embed/Embed";
+import { Kanban } from "./tools/Kanban";
 
 const Container = styled("div")`
   display: flex;
@@ -23,7 +23,7 @@ const Container = styled("div")`
 
 const tools: string[] = [
   "quick-tabs",
-  "quick-list",
+  "kanban",
   "speak-it",
   "voice-notes",
   "character-counter",
@@ -54,18 +54,18 @@ export const App = () => {
         }}
       >
         <Show when={selectedTool()}>
-          {selectedTool() === "stopwatch" && <Stopwatch />}
+          {selectedTool() === "quick-tabs" && <QuickTabs />}
+          {selectedTool() === "kanban" && <Kanban />}
+          {selectedTool() === "speak-it" && <SpeakIt />}
+          {selectedTool() === "voice-notes" && <VoiceNotes />}
+          {selectedTool() === "character-counter" && <CharacterCounter />}
           {selectedTool() === "code-playground" && (
             <Embed src="https://tihi321.github.io/web_playground" title="Code" />
           )}
+          {selectedTool() === "stopwatch" && <Stopwatch />}
           {selectedTool() === "multi-timer" && <MultiTimer />}
-          {selectedTool() === "speak-it" && <SpeakIt />}
-          {selectedTool() === "quick-list" && <QuickList />}
-          {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
-          {selectedTool() === "character-counter" && <CharacterCounter />}
-          {selectedTool() === "voice-notes" && <VoiceNotes />}
         </Show>
       </Frame>
     </Container>
