@@ -18,16 +18,30 @@ import DeleteIcon from "@suid/icons-material/Delete";
 import EditIcon from "@suid/icons-material/Edit";
 import { styled } from "solid-styled-components";
 
+const Container = styled(Box)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  background-color: #b2c4cd;
+`;
+
 const BoardContainer = styled(Box)`
   display: flex;
   overflow-x: auto;
-  padding: 20px;
   gap: 20px;
+  justify-content: space-between;
+  margin-top: 50px;
 `;
 
 const Column = styled(Card)`
   min-width: 300px;
   max-width: 300px;
+  min-height: 600px;
+  display: flex;
+  flex-direction: row;
+  background-color: rgba(255, 255, 255, 0.5) !important;
 `;
 
 const TaskCard = styled(Card)`
@@ -45,6 +59,7 @@ interface Column {
   id: string;
   title: string;
   tasks: Task[];
+  isDefault?: boolean;
 }
 
 interface Board {
@@ -62,10 +77,15 @@ export const Kanban = () => {
   const [newTaskDescription, setNewTaskDescription] = createSignal("");
   const [editingTask, setEditingTask] = createSignal<Task | null>(null);
   const [isTaskDialogOpen, setIsTaskDialogOpen] = createSignal(false);
+  const [isDeleteBoardDialogOpen, setIsDeleteBoardDialogOpen] = createSignal(false);
+  const [isDeleteColumnDialogOpen, setIsDeleteColumnDialogOpen] = createSignal(false);
+  const [boardToDelete, setBoardToDelete] = createSignal<string | null>(null);
+  const [columnToDelete, setColumnToDelete] = createSignal<string | null>(null);
+  const [activeColumnId, setActiveColumnId] = createSignal<string | null>(null);
 
   // Load boards from localStorage on component mount
   createEffect(() => {
-    const storedBoards = localStorage.getItem("kanban-boards");
+    const storedBoards = localStorage.getItem("webtools/kanbanboards");
     if (storedBoards) {
       setBoards(JSON.parse(storedBoards));
       if (boards.length > 0) {
@@ -77,9 +97,9 @@ export const Kanban = () => {
         id: Date.now().toString(),
         title: "Default Board",
         columns: [
-          { id: "todo", title: "To Do", tasks: [] },
-          { id: "inprogress", title: "In Progress", tasks: [] },
-          { id: "done", title: "Done", tasks: [] },
+          { id: "todo", title: "To Do", tasks: [], isDefault: true },
+          { id: "inprogress", title: "In Progress", tasks: [], isDefault: true },
+          { id: "done", title: "Done", tasks: [], isDefault: true },
         ],
       };
       setBoards([defaultBoard]);
@@ -89,7 +109,7 @@ export const Kanban = () => {
 
   // Save boards to localStorage whenever they change
   createEffect(() => {
-    localStorage.setItem("kanban-boards", JSON.stringify(boards));
+    localStorage.setItem("webtools/kanbanboards", JSON.stringify(boards));
   });
 
   const addBoard = () => {
@@ -100,9 +120,9 @@ export const Kanban = () => {
             id: Date.now().toString(),
             title: newBoardTitle(),
             columns: [
-              { id: "todo", title: "To Do", tasks: [] },
-              { id: "inprogress", title: "In Progress", tasks: [] },
-              { id: "done", title: "Done", tasks: [] },
+              { id: "todo", title: "To Do", tasks: [], isDefault: true },
+              { id: "inprogress", title: "In Progress", tasks: [], isDefault: true },
+              { id: "done", title: "Done", tasks: [], isDefault: true },
             ],
           });
         })
@@ -111,6 +131,22 @@ export const Kanban = () => {
       if (!activeBoard()) {
         setActiveBoard(boards[boards.length - 1].id);
       }
+    }
+  };
+
+  const removeBoard = (boardId: string) => {
+    setBoardToDelete(boardId);
+    setIsDeleteBoardDialogOpen(true);
+  };
+
+  const confirmRemoveBoard = () => {
+    if (boardToDelete()) {
+      setBoards(boards.filter((board) => board.id !== boardToDelete()));
+      if (activeBoard() === boardToDelete()) {
+        setActiveBoard(boards.length > 1 ? boards[0].id : null);
+      }
+      setIsDeleteBoardDialogOpen(false);
+      setBoardToDelete(null);
     }
   };
 
@@ -124,6 +160,7 @@ export const Kanban = () => {
               id: Date.now().toString(),
               title: newColumnTitle(),
               tasks: [],
+              isDefault: false,
             });
           }
         })
@@ -132,36 +169,56 @@ export const Kanban = () => {
     }
   };
 
-  const addTask = (columnId: string) => {
+  const removeColumn = (columnId: string) => {
+    setColumnToDelete(columnId);
+    setIsDeleteColumnDialogOpen(true);
+  };
+
+  const confirmRemoveColumn = () => {
+    if (columnToDelete() && activeBoard()) {
+      setBoards(
+        produce((boards) => {
+          const board = boards.find((b) => b.id === activeBoard());
+          if (board) {
+            board.columns = board.columns.filter((column) => column.id !== columnToDelete());
+          }
+        })
+      );
+      setIsDeleteColumnDialogOpen(false);
+      setColumnToDelete(null);
+    }
+  };
+
+  const openAddTaskDialog = (columnId: string) => {
     setEditingTask(null);
     setNewTaskTitle("");
     setNewTaskDescription("");
+    setActiveColumnId(columnId);
     setIsTaskDialogOpen(true);
+  };
 
-    const handleAddTask = () => {
-      if (newTaskTitle() && activeBoard()) {
-        setBoards(
-          produce((boards) => {
-            const board = boards.find((b) => b.id === activeBoard());
-            if (board) {
-              const column = board.columns.find((c) => c.id === columnId);
-              if (column) {
-                column.tasks.push({
-                  id: Date.now().toString(),
-                  title: newTaskTitle(),
-                  description: newTaskDescription(),
-                });
-              }
+  const handleAddTask = () => {
+    if (newTaskTitle() && activeBoard() && activeColumnId()) {
+      setBoards(
+        produce((boards) => {
+          const board = boards.find((b) => b.id === activeBoard());
+          if (board) {
+            const column = board.columns.find((c) => c.id === activeColumnId());
+            if (column) {
+              column.tasks.push({
+                id: Date.now().toString(),
+                title: newTaskTitle(),
+                description: newTaskDescription(),
+              });
             }
-          })
-        );
-        setNewTaskTitle("");
-        setNewTaskDescription("");
-        setIsTaskDialogOpen(false);
-      }
-    };
-
-    return handleAddTask;
+          }
+        })
+      );
+      setNewTaskTitle("");
+      setNewTaskDescription("");
+      setIsTaskDialogOpen(false);
+      setActiveColumnId(null);
+    }
   };
 
   const editTask = (task: Task) => {
@@ -192,6 +249,7 @@ export const Kanban = () => {
         })
       );
       setIsTaskDialogOpen(false);
+      setEditingTask(null);
     }
   };
 
@@ -233,104 +291,137 @@ export const Kanban = () => {
   };
 
   return (
-    <Box sx={{ width: "100%", maxWidth: 1200, margin: "auto", p: 2 }}>
-      <Typography variant="h4" sx={{ mb: 2 }}>
-        Kanban Boards
-      </Typography>
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <TextField
-          label="New Board Title"
-          value={newBoardTitle()}
-          onChange={(e) => setNewBoardTitle(e.target.value)}
-        />
-        <Button variant="contained" onClick={addBoard} startIcon={<AddIcon />}>
-          Add Board
-        </Button>
-      </Box>
-      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-        <For each={boards}>
-          {(board) => (
-            <Button
-              variant={activeBoard() === board.id ? "contained" : "outlined"}
-              onClick={() => setActiveBoard(board.id)}
-            >
-              {board.title}
+    <Container>
+      <Box sx={{ maxWidth: "980px", width: "100%", textAlign: "center" }}>
+        <Box sx={{ width: "100%", textAlign: "center", margin: "24px 0px" }}>
+          <Typography variant="h4" sx={{ mb: 2, width: "100%", textAlign: "center" }}>
+            Kanban Boards
+          </Typography>
+          <Box sx={{ display: "flex", gap: 2, mb: 2, width: "100%" }}>
+            <TextField
+              label="New Board Title"
+              value={newBoardTitle()}
+              onChange={(e) => setNewBoardTitle(e.target.value)}
+              sx={{ flex: 1 }}
+            />
+            <Button variant="contained" onClick={addBoard} startIcon={<AddIcon />}>
+              Add Board
             </Button>
-          )}
-        </For>
-      </Box>
-      <Show when={activeBoard()}>
-        <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-          <TextField
-            label="New Column Title"
-            value={newColumnTitle()}
-            onChange={(e) => setNewColumnTitle(e.target.value)}
-          />
-          <Button variant="contained" onClick={addColumn} startIcon={<AddIcon />}>
-            Add Column
-          </Button>
+          </Box>
         </Box>
-        <BoardContainer>
-          <For each={boards.find((b) => b.id === activeBoard())?.columns}>
-            {(column) => (
-              <Column>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 2 }}>
-                    {column.title}
-                  </Typography>
-                  <For each={column.tasks}>
-                    {(task) => (
-                      <TaskCard
-                        onDragStart={(e) => {
-                          if (e?.dataTransfer) {
-                            e.dataTransfer.setData(
-                              "text/plain",
-                              JSON.stringify({ columnId: column.id, taskId: task.id })
-                            );
-                          }
-                        }}
-                        draggable
-                      >
-                        <CardContent>
-                          <Typography variant="subtitle1">{task.title}</Typography>
-                          <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
-                            <IconButton size="small" onClick={() => editTask(task)}>
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton size="small" onClick={() => removeTask(column.id, task.id)}>
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        </CardContent>
-                      </TaskCard>
-                    )}
-                  </For>
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    onClick={addTask(column.id)}
-                    startIcon={<AddIcon />}
-                    sx={{ mt: 2 }}
-                  >
-                    Add Task
-                  </Button>
-                </CardContent>
-                <Box
-                  sx={{ minHeight: 50 }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (e.dataTransfer) {
-                      const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-                      moveTask(data.columnId, column.id, data.taskId);
-                    }
-                  }}
-                />
-              </Column>
+
+        <Box sx={{ display: "flex", flex: 1, gap: 2, mb: 2 }}>
+          <For each={boards}>
+            {(board) => (
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Button
+                  variant={activeBoard() === board.id ? "contained" : "outlined"}
+                  onClick={() => setActiveBoard(board.id)}
+                >
+                  {board.title}
+                </Button>
+                <IconButton size="small" onClick={() => removeBoard(board.id)}>
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
             )}
           </For>
-        </BoardContainer>
-      </Show>
+        </Box>
+        <Show when={activeBoard()}>
+          <Box sx={{ display: "flex", width: "100%", gap: 2, mb: 2 }}>
+            <TextField
+              label="New Column Title"
+              value={newColumnTitle()}
+              onChange={(e) => setNewColumnTitle(e.target.value)}
+              sx={{ flex: 1 }}
+            />
+            <Button variant="contained" onClick={addColumn} startIcon={<AddIcon />}>
+              Add Column
+            </Button>
+          </Box>
+          <BoardContainer>
+            <For each={boards.find((b) => b.id === activeBoard())?.columns}>
+              {(column) => (
+                <Column>
+                  <CardContent
+                    sx={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (e.dataTransfer) {
+                        const data = JSON.parse(e.dataTransfer.getData("text/plain"));
+                        moveTask(data.columnId, column.id, data.taskId);
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        mb: 2,
+                      }}
+                    >
+                      <Typography variant="h6">{column.title}</Typography>
+                      {!column.isDefault && (
+                        <IconButton size="small" onClick={() => removeColumn(column.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      )}
+                    </Box>
+                    <For each={column.tasks}>
+                      {(task) => (
+                        <TaskCard
+                          onDragStart={(e) => {
+                            if (e?.dataTransfer) {
+                              e.dataTransfer.setData(
+                                "text/plain",
+                                JSON.stringify({ columnId: column.id, taskId: task.id })
+                              );
+                            }
+                          }}
+                          sx={{ cursor: "grab", backgroundColor: "rgba(255, 255, 255, 0.8)" }}
+                          draggable
+                        >
+                          <CardContent sx={{ display: "flex", alignItems: "center" }}>
+                            <Typography sx={{ flex: 1, textAlign: "start" }} variant="subtitle1">
+                              {task.title}
+                            </Typography>
+                            <Box sx={{ display: "flex" }}>
+                              <IconButton size="small" onClick={() => editTask(task)}>
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => removeTask(column.id, task.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </CardContent>
+                        </TaskCard>
+                      )}
+                    </For>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => openAddTaskDialog(column.id)}
+                      startIcon={<AddIcon />}
+                      sx={{ marginTop: "auto" }}
+                    >
+                      Add Task
+                    </Button>
+                  </CardContent>
+                </Column>
+              )}
+            </For>
+          </BoardContainer>
+        </Show>
+      </Box>
       <Dialog open={isTaskDialogOpen()} onClose={() => setIsTaskDialogOpen(false)}>
         <DialogTitle>{editingTask() ? "Edit Task" : "New Task"}</DialogTitle>
         <DialogContent>
@@ -354,11 +445,36 @@ export const Kanban = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setIsTaskDialogOpen(false)}>Cancel</Button>
-          <Button onClick={editingTask() ? handleEditTask : addTask("")}>
+          <Button onClick={editingTask() ? handleEditTask : handleAddTask}>
             {editingTask() ? "Save" : "Add"}
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+      <Dialog open={isDeleteBoardDialogOpen()} onClose={() => setIsDeleteBoardDialogOpen(false)}>
+        <DialogTitle>Confirm Delete Board</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this board? This action cannot be undone.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsDeleteBoardDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmRemoveBoard} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={isDeleteColumnDialogOpen()} onClose={() => setIsDeleteColumnDialogOpen(false)}>
+        <DialogTitle>Confirm Delete Column</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this column? All tasks in this column will be lost. This
+          action cannot be undone.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsDeleteColumnDialogOpen(false)}>Cancel</Button>
+          <Button onClick={confirmRemoveColumn} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };

@@ -22,8 +22,8 @@ const Container = styled("div")`
 `;
 
 const tools: string[] = [
-  "quick-tabs",
   "kanban",
+  "quick-tabs",
   "speak-it",
   "voice-notes",
   "character-counter",
@@ -39,8 +39,8 @@ export const App = () => {
 
   onMount(() => {
     const initialTool = getURLParams("tool");
-    setSelectedTool(initialTool || "quick-tabs");
-    document.title = `Web Tools - ${startCase(replace(initialTool || "quick-tabs", "-", " "))}`;
+    setSelectedTool(initialTool || "kanban");
+    document.title = `Web Tools - ${startCase(replace(initialTool || "kanban", "-", " "))}`;
   });
 
   return (
@@ -54,8 +54,8 @@ export const App = () => {
         }}
       >
         <Show when={selectedTool()}>
-          {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "kanban" && <Kanban />}
+          {selectedTool() === "quick-tabs" && <QuickTabs />}
           {selectedTool() === "speak-it" && <SpeakIt />}
           {selectedTool() === "voice-notes" && <VoiceNotes />}
           {selectedTool() === "character-counter" && <CharacterCounter />}
