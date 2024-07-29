@@ -1,4 +1,4 @@
-import { onMount, For, Show } from "solid-js";
+import { onMount, For, Show, createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
 import {
   Box,
@@ -17,6 +17,7 @@ import EditIcon from "@suid/icons-material/Edit";
 import { styled } from "solid-styled-components";
 import { Accordion } from "../components/containers/Accordion";
 import { TextEditor } from "../components/code/TextEditor";
+import { filter, get, map } from "lodash";
 
 const Container = styled(Box)`
   display: grid;
@@ -68,6 +69,21 @@ const MainContent = styled(Box)`
   flex: 1;
 `;
 
+const NoteItem = styled("div")<{ selected: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: ${(props) => (props.selected ? "bold" : "normal")};
+`;
+
+const NoteTitle = styled(Box)`
+  flex: 1;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
 interface Note {
   id: string;
   title: string;
@@ -76,156 +92,166 @@ interface Note {
 
 interface Folder {
   id: string;
+  open: boolean;
   title: string;
   notes: Note[];
 }
 
 export const QuickNotes = () => {
-  const [store, setStore] = createStore({
-    folders: [] as Folder[],
-    selectedNote: null as Note | null,
-    isModalOpen: false,
-    modalMode: "" as "addFolder" | "editFolder" | "addNote" | "editNote",
-    modalTitle: "",
-    inputTitle: "",
-    activeFolderId: null as string | null,
-  });
+  const [folders, setFolders] = createStore<Folder[]>([]);
+
+  const [isModalOpen, setIsModalOpen] = createSignal<boolean>(false);
+  const [inputTitle, setInputTitle] = createSignal<string>("");
+  const [modalMode, setModalMode] = createSignal<
+    "" | "addFolder" | "editFolder" | "addNote" | "editNote"
+  >("");
+  const [activeFolderId, setActiveFolderId] = createSignal<string | null>(null);
+  const [selectedNote, setSelectedNote] = createSignal<Note | null>(null);
 
   const saveFolders = (state: Folder[]) => {
-    setStore("folders", state);
-    localStorage.setItem("webtools/quickNotes", JSON.stringify(state));
+    setFolders(state);
+    localStorage.setItem("webtools/quicknotes", JSON.stringify(state));
   };
 
   onMount(() => {
-    const storedData = localStorage.getItem("quickNotes");
+    const storedData = localStorage.getItem("webtools/quicknotes");
     if (storedData) {
-      setStore("folders", JSON.parse(storedData));
+      setFolders(JSON.parse(storedData));
     }
   });
 
-  const openModal = (
-    mode: "addFolder" | "editFolder" | "addNote" | "editNote",
-    folderId?: string,
-    note?: Note
-  ) => {
-    setStore({
-      isModalOpen: true,
-      modalMode: mode,
-      modalTitle: mode.startsWith("add")
-        ? `Add ${mode === "addFolder" ? "Folder" : "Note"}`
-        : `Edit ${mode === "editFolder" ? "Folder" : "Note"}`,
-      inputTitle: mode.startsWith("edit")
-        ? mode === "editFolder"
-          ? store.folders.find((f) => f.id === folderId)?.title || ""
-          : note?.title || ""
-        : "",
-      activeFolderId: folderId || null,
-    });
-  };
-
   const closeModal = () => {
-    setStore({
-      isModalOpen: false,
-      inputTitle: "",
-      activeFolderId: null,
-    });
+    setIsModalOpen(false);
+    setInputTitle("");
   };
 
   const handleModalSubmit = () => {
-    if (store.modalMode === "addFolder") {
+    if (modalMode() === "addFolder") {
       addFolder();
-    } else if (store.modalMode === "editFolder") {
+    } else if (modalMode() === "editFolder") {
       editFolder();
-    } else if (store.modalMode === "addNote") {
+    } else if (modalMode() === "addNote") {
       addNote();
-    } else if (store.modalMode === "editNote") {
+    } else if (modalMode() === "editNote") {
       editNote();
     }
     closeModal();
   };
 
   const addFolder = () => {
-    const newState = [
-      ...store.folders,
-      {
-        id: Date.now().toString(),
-        title: store.inputTitle,
-        notes: [],
-      },
-    ];
+    const newFolder = {
+      id: Date.now().toString(),
+      title: inputTitle(),
+      open: true,
+      notes: [],
+    } as Folder;
+    const newState = [...folders, newFolder];
+
     saveFolders(newState);
   };
 
   const editFolder = () => {
-    const newState = store.folders.map((f) => {
-      if (f.id === store.activeFolderId) {
-        f.title = store.inputTitle;
+    const newState = folders.map((state) => {
+      if (state.id === activeFolderId()) {
+        return {
+          ...state,
+          title: inputTitle(),
+        };
       }
-      return f;
+      return state;
     });
-
     saveFolders(newState);
   };
 
   const removeFolder = (folderId: string) => {
-    const newState = store.folders.filter((f) => f.id !== folderId);
+    const newState = filter(folders, (state) => state.id !== folderId);
     saveFolders(newState);
   };
 
   const addNote = () => {
-    const newState = store.folders.map((f) => {
-      if (f.id === store.activeFolderId) {
-        f.notes.push({
-          id: Date.now().toString(),
-          title: store.inputTitle,
-          content: "",
-        });
+    const newState = map(folders, (state) => {
+      if (state.id === activeFolderId()) {
+        return {
+          ...state,
+          notes: [
+            ...state.notes,
+            {
+              id: Date.now().toString(),
+              title: inputTitle(),
+              content: "",
+            },
+          ],
+        };
       }
-      return f;
+      return state;
     });
     saveFolders(newState);
   };
 
   const editNote = () => {
-    const newState = store.folders.map((f) => {
-      if (f.id === store.activeFolderId) {
-        f.notes = f.notes.map((n) => {
-          if (n.id === store.selectedNote?.id) {
-            n.title = store.inputTitle;
-          }
-          return n;
-        });
+    const newState = map(folders, (state) => {
+      if (state.id === activeFolderId()) {
+        return {
+          ...state,
+          notes: map(get(state, ["notes"]), (note) => {
+            if (note.id === selectedNote()?.id) {
+              return {
+                ...note,
+                title: inputTitle(),
+              };
+            }
+            return note;
+          }),
+        };
       }
-      return f;
+      return state;
     });
     saveFolders(newState);
   };
 
   const removeNote = (folderId: string, noteId: string) => {
-    const newState = store.folders.map((f) => {
-      if (f.id === folderId) {
-        f.notes = f.notes.filter((n) => n.id !== noteId);
+    const newState = map(folders, (state) => {
+      if (state.id === folderId) {
+        return {
+          ...state,
+          notes: filter(get(state, "notes"), (note) => note.id !== noteId),
+        };
       }
-      return f;
+      return state;
     });
     saveFolders(newState);
   };
 
-  const selectNote = (note: Note) => {
-    setStore("selectedNote", note);
+  const updateNoteContent = (content: string) => {
+    const newState = map(folders, (state) => {
+      if (state.id === activeFolderId()) {
+        return {
+          ...state,
+          notes: map(get(state, "notes"), (note) => {
+            if (note.id === selectedNote()?.id) {
+              return {
+                ...note,
+                content,
+              };
+            }
+            return note;
+          }),
+        };
+      }
+      return state;
+    });
+    saveFolders(newState);
   };
 
-  const updateNoteContent = (content: string) => {
-    const newState = store.folders.map((f) => {
-      if (f.id === store.activeFolderId) {
-        f.notes = f.notes.map((n) => {
-          if (n.id === store.selectedNote?.id) {
-            n.content = content;
-          }
-          return n;
-        });
+  const updateFolderOpen = (value: boolean, folderId: string) => {
+    const newState = map(folders, (state) => {
+      if (state.id === folderId) {
+        return {
+          ...state,
+          open: value,
+        };
       }
-      return f;
+      return state;
     });
     saveFolders(newState);
   };
@@ -236,33 +262,57 @@ export const QuickNotes = () => {
         <Typography variant="h6" sx={{ mb: 2 }}>
           Quick Notes
         </Typography>
-        <Button startIcon={<AddIcon />} onClick={() => openModal("addFolder")} sx={{ mb: 2 }}>
+        <Button
+          startIcon={<AddIcon />}
+          onClick={() => {
+            setModalMode("addFolder");
+            setIsModalOpen(true);
+          }}
+          sx={{ mb: 2 }}
+        >
           Add Folder
         </Button>
-        <For each={store.folders}>
+        <For each={folders}>
           {(folder) => (
             <FolderAccordion>
-              <Accordion title={folder.title}>
+              <Accordion
+                title={folder.title}
+                open={folder.open}
+                onOpen={(value) => {
+                  updateFolderOpen(value, folder.id);
+                }}
+              >
                 <Button
                   startIcon={<AddIcon />}
-                  onClick={() => openModal("addNote", folder.id)}
+                  onClick={() => {
+                    setActiveFolderId(folder.id);
+                    setModalMode("addNote");
+                  }}
                   sx={{ mb: 1 }}
                 >
                   Add Note
                 </Button>
                 <For each={folder.notes}>
                   {(note) => (
-                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                      <Typography
-                        onClick={() => selectNote(note)}
-                        sx={{ cursor: "pointer", flexGrow: 1 }}
+                    <NoteItem selected={note.id === selectedNote()?.id}>
+                      <NoteTitle
+                        onClick={() => {
+                          setActiveFolderId(folder.id);
+                          setSelectedNote(note);
+                        }}
                       >
                         {note.title}
-                      </Typography>
+                      </NoteTitle>
                       <NoteIcons>
                         <IconButton
                           size="small"
-                          onClick={() => openModal("editNote", folder.id, note)}
+                          onClick={() => {
+                            setSelectedNote(note);
+                            setInputTitle(note.title);
+                            setActiveFolderId(folder.id);
+                            setModalMode("editNote");
+                            setIsModalOpen(true);
+                          }}
                         >
                           <EditIcon />
                         </IconButton>
@@ -270,12 +320,20 @@ export const QuickNotes = () => {
                           <DeleteIcon />
                         </IconButton>
                       </NoteIcons>
-                    </Box>
+                    </NoteItem>
                   )}
                 </For>
               </Accordion>
               <FolderIcons>
-                <IconButton size="small" onClick={() => openModal("editFolder", folder.id)}>
+                <IconButton
+                  size="small"
+                  onClick={() => {
+                    setActiveFolderId(folder.id);
+                    setInputTitle(folder.title);
+                    setModalMode("editFolder");
+                    setIsModalOpen(true);
+                  }}
+                >
                   <EditIcon />
                 </IconButton>
                 <IconButton size="small" onClick={() => removeFolder(folder.id)}>
@@ -287,31 +345,38 @@ export const QuickNotes = () => {
         </For>
       </SidePanel>
       <MainContent>
-        <Show when={store.selectedNote}>
+        <Show when={selectedNote()}>
           <TextEditor
             onChange={(value: string) => {
               updateNoteContent(value);
             }}
-            value={store.selectedNote?.content || ""}
+            value={selectedNote()?.content || ""}
           />
         </Show>
       </MainContent>
-      <Dialog open={store.isModalOpen} onClose={closeModal}>
-        <DialogTitle>{store.modalTitle}</DialogTitle>
+      <Dialog open={isModalOpen()} onClose={closeModal}>
+        <DialogTitle>
+          {modalMode() === "addFolder" ? "Add Folder" : ""}
+          {modalMode() === "editFolder" ? "Edit Folder" : ""}
+          {modalMode() === "addNote" ? "Add Note" : ""}
+          {modalMode() === "editNote" ? "Edit Note" : ""}
+        </DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
             label="Title"
             fullWidth
-            value={store.inputTitle}
-            onChange={(e) => setStore("inputTitle", e.target.value)}
+            value={inputTitle()}
+            onChange={(event) => {
+              setInputTitle(event.target.value);
+            }}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={closeModal}>Cancel</Button>
           <Button onClick={handleModalSubmit}>
-            {store.modalMode.startsWith("add") ? "Add" : "Save"}
+            {modalMode().startsWith("add") ? "Add" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>
