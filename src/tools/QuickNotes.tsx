@@ -1,5 +1,5 @@
-import { createEffect, For, Show } from "solid-js";
-import { createStore, produce } from "solid-js/store";
+import { onMount, For, Show } from "solid-js";
+import { createStore } from "solid-js/store";
 import {
   Box,
   Typography,
@@ -65,8 +65,7 @@ const NoteIcons = styled(Box)`
 `;
 
 const MainContent = styled(Box)`
-  flex-grow: 1;
-  padding: 16px;
+  flex: 1;
 `;
 
 interface Note {
@@ -92,11 +91,12 @@ export const QuickNotes = () => {
     activeFolderId: null as string | null,
   });
 
-  const saveToLocalStorage = () => {
-    localStorage.setItem("webtools/quickNotes", JSON.stringify(store.folders));
+  const saveFolders = (state: Folder[]) => {
+    setStore("folders", state);
+    localStorage.setItem("webtools/quickNotes", JSON.stringify(state));
   };
 
-  createEffect(() => {
+  onMount(() => {
     const storedData = localStorage.getItem("quickNotes");
     if (storedData) {
       setStore("folders", JSON.parse(storedData));
@@ -145,76 +145,70 @@ export const QuickNotes = () => {
   };
 
   const addFolder = () => {
-    setStore(
-      produce((s) => {
-        s.folders.push({
-          id: Date.now().toString(),
-          title: store.inputTitle,
-          notes: [],
-        });
-      })
-    );
-    saveToLocalStorage();
+    const newState = [
+      ...store.folders,
+      {
+        id: Date.now().toString(),
+        title: store.inputTitle,
+        notes: [],
+      },
+    ];
+    saveFolders(newState);
   };
 
   const editFolder = () => {
-    setStore(
-      produce((s) => {
-        const folder = s.folders.find((f) => f.id === store.activeFolderId);
-        if (folder) {
-          folder.title = store.inputTitle;
-        }
-      })
-    );
-    saveToLocalStorage();
+    const newState = store.folders.map((f) => {
+      if (f.id === store.activeFolderId) {
+        f.title = store.inputTitle;
+      }
+      return f;
+    });
+
+    saveFolders(newState);
   };
 
   const removeFolder = (folderId: string) => {
-    setStore("folders", (folders) => folders.filter((f) => f.id !== folderId));
-    saveToLocalStorage();
+    const newState = store.folders.filter((f) => f.id !== folderId);
+    saveFolders(newState);
   };
 
   const addNote = () => {
-    setStore(
-      produce((s) => {
-        const folder = s.folders.find((f) => f.id === store.activeFolderId);
-        if (folder) {
-          folder.notes.push({
-            id: Date.now().toString(),
-            title: store.inputTitle,
-            content: "",
-          });
-        }
-      })
-    );
-    saveToLocalStorage();
+    const newState = store.folders.map((f) => {
+      if (f.id === store.activeFolderId) {
+        f.notes.push({
+          id: Date.now().toString(),
+          title: store.inputTitle,
+          content: "",
+        });
+      }
+      return f;
+    });
+    saveFolders(newState);
   };
 
   const editNote = () => {
-    setStore(
-      produce((s) => {
-        const folder = s.folders.find((f) => f.id === store.activeFolderId);
-        if (folder) {
-          const note = folder.notes.find((n) => n.id === store.selectedNote?.id);
-          if (note) {
-            note.title = store.inputTitle;
+    const newState = store.folders.map((f) => {
+      if (f.id === store.activeFolderId) {
+        f.notes = f.notes.map((n) => {
+          if (n.id === store.selectedNote?.id) {
+            n.title = store.inputTitle;
           }
-        }
-      })
-    );
-    saveToLocalStorage();
+          return n;
+        });
+      }
+      return f;
+    });
+    saveFolders(newState);
   };
 
   const removeNote = (folderId: string, noteId: string) => {
-    setStore(
-      produce((s) => {
-        const folder = s.folders.find((f) => f.id === folderId);
-        if (folder) {
-          folder.notes = folder.notes.filter((n) => n.id !== noteId);
-        }
-      })
-    );
-    saveToLocalStorage();
+    const newState = store.folders.map((f) => {
+      if (f.id === folderId) {
+        f.notes = f.notes.filter((n) => n.id !== noteId);
+      }
+      return f;
+    });
+    saveFolders(newState);
   };
 
   const selectNote = (note: Note) => {
@@ -222,18 +216,18 @@ export const QuickNotes = () => {
   };
 
   const updateNoteContent = (content: string) => {
-    setStore(
-      produce((s) => {
-        const folder = s.folders.find((f) => f.id === store.activeFolderId);
-        if (folder) {
-          const note = folder.notes.find((n) => n.id === store.selectedNote?.id);
-          if (note) {
-            note.content = content;
+    const newState = store.folders.map((f) => {
+      if (f.id === store.activeFolderId) {
+        f.notes = f.notes.map((n) => {
+          if (n.id === store.selectedNote?.id) {
+            n.content = content;
           }
-        }
-      })
-    );
-    saveToLocalStorage();
+          return n;
+        });
+      }
+      return f;
+    });
+    saveFolders(newState);
   };
 
   return (
@@ -296,7 +290,6 @@ export const QuickNotes = () => {
         <Show when={store.selectedNote}>
           <TextEditor
             onChange={(value: string) => {
-              console.log(value);
               updateNoteContent(value);
             }}
             value={store.selectedNote?.content || ""}
