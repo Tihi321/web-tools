@@ -17,7 +17,7 @@ const AccordionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 8px;
   cursor: pointer;
 `;
 
@@ -38,14 +38,16 @@ export const Accordion = (props: AccordionProps) => {
   };
 
   return (
-    <AccordionWrapper elevation={3}>
+    <AccordionWrapper elevation={3} class="accordion">
       <AccordionHeader onClick={toggleAccordion}>
-        <Typography variant="h6">{props.title}</Typography>
-        <ExpandIcon isOpen={isOpen()}>
+        <Typography variant="h6" class="accordion-header">
+          {props.title}
+        </Typography>
+        <ExpandIcon class="accordion-icon" isOpen={isOpen()}>
           <ExpandMoreIcon />
         </ExpandIcon>
       </AccordionHeader>
-      {isOpen() && <AccordionContent>{props.children}</AccordionContent>}
+      {isOpen() && <AccordionContent class="accordion-content">{props.children}</AccordionContent>}
     </AccordionWrapper>
   );
 };

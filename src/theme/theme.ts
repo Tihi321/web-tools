@@ -6,6 +6,7 @@ export const theme: DefaultTheme = {
     darkText: "rgb(21, 101, 192)",
     darkBackground: "rgb(21, 101, 192)",
     lightBackground: "rgb(242, 242, 242)",
+    codeBackground: "rgb(30, 30, 30)",
     border: "rgb(221, 221, 221)",
     hint: "rgb(255, 249, 196)",
     correct: "rgb(76, 175, 80)",

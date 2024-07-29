@@ -3,7 +3,6 @@ import replace from "lodash/replace";
 import startCase from "lodash/startCase";
 import { styled } from "solid-styled-components";
 import { Stopwatch } from "./tools/Stopwatch";
-import { QuickTabs } from "./tools/QuickTabs";
 import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
@@ -14,6 +13,7 @@ import { getURLParams } from "./utils/url";
 import { Frame } from "./components/layout/Frame";
 import { Embed } from "./components/embed/Embed";
 import { Kanban } from "./tools/Kanban";
+import { QuickNotes } from "./tools/QuickNotes"; // Add this import
 
 const Container = styled("div")`
   display: flex;
@@ -23,7 +23,7 @@ const Container = styled("div")`
 
 const tools: string[] = [
   "kanban",
-  "quick-tabs",
+  "quick-notes",
   "speak-it",
   "voice-notes",
   "character-counter",
@@ -55,7 +55,7 @@ export const App = () => {
       >
         <Show when={selectedTool()}>
           {selectedTool() === "kanban" && <Kanban />}
-          {selectedTool() === "quick-tabs" && <QuickTabs />}
+          {selectedTool() === "quick-notes" && <QuickNotes />}
           {selectedTool() === "speak-it" && <SpeakIt />}
           {selectedTool() === "voice-notes" && <VoiceNotes />}
           {selectedTool() === "character-counter" && <CharacterCounter />}
