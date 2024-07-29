@@ -37,6 +37,7 @@ const FolderAccordion = styled(Box)`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  cursor: move;
 
   .accordion {
     flex: 1;
@@ -74,6 +75,9 @@ const NoteItem = styled("div")<{ selected: boolean }>`
   justify-content: space-between;
   align-items: center;
   font-weight: ${(props) => (props.selected ? "bold" : "normal")};
+  padding: 4px;
+  margin-bottom: 4px;
+  background-color: ${(props) => (props.selected ? "#e0e0e0" : "transparent")};
 `;
 
 const NoteTitle = styled(Box)`
@@ -99,7 +103,6 @@ interface Folder {
 
 export const QuickNotes = () => {
   const [folders, setFolders] = createStore<Folder[]>([]);
-
   const [isModalOpen, setIsModalOpen] = createSignal<boolean>(false);
   const [inputTitle, setInputTitle] = createSignal<string>("");
   const [modalMode, setModalMode] = createSignal<
@@ -107,6 +110,7 @@ export const QuickNotes = () => {
   >("");
   const [activeFolderId, setActiveFolderId] = createSignal<string | null>(null);
   const [selectedNote, setSelectedNote] = createSignal<Note | null>(null);
+  const [draggedFolderId, setDraggedFolderId] = createSignal<string | null>(null);
 
   const saveFolders = (state: Folder[]) => {
     setFolders(state);
@@ -146,7 +150,6 @@ export const QuickNotes = () => {
       notes: [],
     } as Folder;
     const newState = [...folders, newFolder];
-
     saveFolders(newState);
   };
 
@@ -256,6 +259,33 @@ export const QuickNotes = () => {
     saveFolders(newState);
   };
 
+  const handleDragStart = (e: DragEvent, folderId: string) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("text/plain", folderId);
+    }
+    setDraggedFolderId(folderId);
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: DragEvent, targetFolderId: string) => {
+    e.preventDefault();
+    const draggedId = draggedFolderId();
+    if (!draggedId || draggedId === targetFolderId) return;
+
+    const newOrder = folders.filter((folder) => folder.id !== draggedId);
+    const draggedFolder = folders.find((folder) => folder.id === draggedId);
+    if (draggedFolder) {
+      const targetIndex = newOrder.findIndex((folder) => folder.id === targetFolderId);
+      newOrder.splice(targetIndex, 0, draggedFolder);
+      saveFolders(newOrder);
+    }
+
+    setDraggedFolderId(null);
+  };
+
   return (
     <Container>
       <SidePanel>
@@ -274,7 +304,12 @@ export const QuickNotes = () => {
         </Button>
         <For each={folders}>
           {(folder) => (
-            <FolderAccordion>
+            <FolderAccordion
+              draggable
+              onDragStart={(e) => handleDragStart(e, folder.id)}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, folder.id)}
+            >
               <Accordion
                 title={folder.title}
                 open={folder.open}
@@ -287,6 +322,7 @@ export const QuickNotes = () => {
                   onClick={() => {
                     setActiveFolderId(folder.id);
                     setModalMode("addNote");
+                    setIsModalOpen(true);
                   }}
                   sx={{ mb: 1 }}
                 >
