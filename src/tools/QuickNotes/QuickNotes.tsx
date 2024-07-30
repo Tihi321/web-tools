@@ -15,8 +15,8 @@ import AddIcon from "@suid/icons-material/Add";
 import DeleteIcon from "@suid/icons-material/Delete";
 import EditIcon from "@suid/icons-material/Edit";
 import { styled } from "solid-styled-components";
-import { Accordion } from "../components/containers/Accordion";
-import { TextEditor } from "../components/code/TextEditor";
+import { Accordion } from "../../components/containers/Accordion";
+import { TextEditor } from "../../components/code/TextEditor";
 import { filter, get, map } from "lodash";
 
 const Container = styled(Box)`

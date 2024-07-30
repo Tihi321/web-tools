@@ -10,16 +10,16 @@ import {
   FormControl,
   InputLabel,
 } from "@suid/material";
-import { getVoice, getVoices } from "../utils";
-import { getStringValue, saveStringValue } from "../hooks/local";
+import { getVoice, getVoices } from "../../utils";
+import { getStringValue, saveStringValue } from "../../hooks/local";
 import { styled } from "solid-styled-components";
 import { isEmpty, map } from "lodash";
-import { Refresh } from "../components/icons/Refresh";
-import { Save } from "../components/icons/Save";
-import { Play } from "../components/icons/Play";
-import { Stop } from "../components/icons/Stop";
-import { Pause } from "../components/icons/Pause";
-import { RangeInput } from "../components/inputs/RangeInput";
+import { Refresh } from "../../components/icons/Refresh";
+import { Save } from "../../components/icons/Save";
+import { Play } from "../../components/icons/Play";
+import { Stop } from "../../components/icons/Stop";
+import { Pause } from "../../components/icons/Pause";
+import { RangeInput } from "../../components/inputs/RangeInput";
 
 const MenuItemStyled = styled(MenuItem)`
   display: flex;

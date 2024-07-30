@@ -7,6 +7,7 @@ import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
 import { JsonStringifier } from "./tools/JsonStringifier";
 import { MultiTimer } from "./tools/MultiTimer";
 import { SpeakIt } from "./tools/SpeakIt";
+import { MusicPlayer } from "./tools/MusicPlayer";
 import { CharacterCounter } from "./tools/CharacterCounter";
 import { VoiceNotes } from "./tools/VoiceNotes";
 import { getURLParams } from "./utils/url";
@@ -24,6 +25,7 @@ const Container = styled("div")`
 const tools: string[] = [
   "kanban",
   "quick-notes",
+  "music-player",
   "speak-it",
   "voice-notes",
   "character-counter",
@@ -56,6 +58,7 @@ export const App = () => {
         <Show when={selectedTool()}>
           {selectedTool() === "kanban" && <Kanban />}
           {selectedTool() === "quick-notes" && <QuickNotes />}
+          {selectedTool() === "music-player" && <MusicPlayer />}
           {selectedTool() === "speak-it" && <SpeakIt />}
           {selectedTool() === "voice-notes" && <VoiceNotes />}
           {selectedTool() === "character-counter" && <CharacterCounter />}
