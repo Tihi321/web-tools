@@ -14,7 +14,7 @@ import { getURLParams } from "./utils/url";
 import { Frame } from "./components/layout/Frame";
 import { Embed } from "./components/embed/Embed";
 import { Kanban } from "./tools/Kanban";
-import { QuickNotes } from "./tools/QuickNotes"; // Add this import
+import { QuickNotes } from "./tools/QuickNotes";
 
 const Container = styled("div")`
   display: flex;

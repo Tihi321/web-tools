@@ -54,7 +54,7 @@ export const SpeakIt = () => {
 
   onMount(() => {
     speaker = new SpeechSynthesisUtterance();
-    const voice = getStringValue("selectedVoice");
+    const voice = getStringValue("web-tools/selectedVoice");
     setSelectedVoice(voice || "");
     setMounted(true);
   });
@@ -197,7 +197,7 @@ export const SpeakIt = () => {
           variant="contained"
           color="primary"
           onClick={() => {
-            saveStringValue("selectedVoice", selectedVoice());
+            saveStringValue("web-tools/selectedVoice", selectedVoice());
           }}
         >
           <Save />

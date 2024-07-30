@@ -22,21 +22,12 @@ import SkipPreviousIcon from "@suid/icons-material/SkipPrevious";
 import VolumeUpIcon from "@suid/icons-material/VolumeUp";
 import VolumeOffIcon from "@suid/icons-material/VolumeOff";
 import AddIcon from "@suid/icons-material/Add";
+import DeleteIcon from "@suid/icons-material/Delete";
+import ContentCopyIcon from "@suid/icons-material/ContentCopy";
+import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
-
-interface Song {
-  id: string;
-  name: string;
-  src: string;
-  muted: boolean;
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  songs: Song[];
-}
+import { Snackbar } from "../../components/toasts/Snackbar";
 
 const Container = styled(Box)`
   display: flex;
@@ -81,6 +72,9 @@ const PlaylistList = styled(Box)`
 const ListItemContainer = styled(Box)<{ selected: boolean }>`
   background-color: ${(props) => (props.selected ? "#f5f5f5" : "transparent")};
   cursor: pointer;
+  &:hover {
+    background-color: #e0e0e0;
+  }
 `;
 
 const SongList = styled(Box)`
@@ -90,6 +84,33 @@ const SongList = styled(Box)`
   border-radius: 4px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
+
+const SongItem = styled(ListItem)<{ selected: boolean }>`
+  background-color: ${(props) => (props.selected ? "#f5f5f5" : "transparent")};
+  &:hover {
+    background-color: #e0e0e0;
+  }
+`;
+
+const DraggableSongItem = styled(SongItem)`
+  display: flex;
+  align-items: center;
+`;
+
+interface Song {
+  id: string;
+  name: string;
+  src: string;
+  muted: boolean;
+}
+
+interface Playlist {
+  id: string;
+  name: string;
+  songs: Song[];
+}
+
+type DialogView = "playlist" | "song" | "deletePlaylist" | "deleteSong" | null;
 
 export const MusicPlayer = () => {
   const [store, setStore] = createStore({
@@ -103,57 +124,26 @@ export const MusicPlayer = () => {
     autoplay: false,
   });
 
-  const [isPlaylistDialogOpen, setIsPlaylistDialogOpen] = createSignal(false);
-  const [isSongDialogOpen, setIsSongDialogOpen] = createSignal(false);
+  const [dialogView, setDialogView] = createSignal<DialogView>(null);
   const [newPlaylistName, setNewPlaylistName] = createSignal("");
   const [newSongName, setNewSongName] = createSignal("");
   const [newSongSrc, setNewSongSrc] = createSignal("");
-
+  const [playlistToDelete, setPlaylistToDelete] = createSignal<Playlist | null>(null);
+  const [songToDelete, setSongToDelete] = createSignal<Song | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = createSignal(false);
+  const [snackbarMessage, setSnackbarMessage] = createSignal("");
+  const [draggedSongId, setDraggedSongId] = createSignal<string | null>(null);
   let audioRef: HTMLAudioElement;
 
   createEffect(() => {
-    const storedPlaylists = localStorage.getItem("musicPlayerPlaylists");
+    const storedPlaylists = localStorage.getItem("web-tools/musicplayerplaylists");
     if (storedPlaylists) {
       setStore("playlists", JSON.parse(storedPlaylists));
     }
   });
 
   const savePlaylists = () => {
-    localStorage.setItem("musicPlayerPlaylists", JSON.stringify(store.playlists));
-  };
-
-  const addPlaylist = () => {
-    const newPlaylist: Playlist = {
-      id: Date.now().toString(),
-      name: newPlaylistName(),
-      songs: [],
-    };
-    setStore("playlists", (playlists) => [...playlists, newPlaylist]);
-    savePlaylists();
-    setNewPlaylistName("");
-    setIsPlaylistDialogOpen(false);
-  };
-
-  const addSong = () => {
-    if (store.currentPlaylist) {
-      const newSong: Song = {
-        id: Date.now().toString(),
-        name: newSongName(),
-        src: newSongSrc(),
-        muted: false,
-      };
-      setStore("playlists", (playlists) =>
-        playlists.map((playlist) =>
-          playlist.id === store.currentPlaylist?.id
-            ? { ...playlist, songs: [...playlist.songs, newSong] }
-            : playlist
-        )
-      );
-      savePlaylists();
-      setNewSongName("");
-      setNewSongSrc("");
-      setIsSongDialogOpen(false);
-    }
+    localStorage.setItem("web-tools/musicplayerplaylists", JSON.stringify(store.playlists));
   };
 
   const loadPlaylist = (playlist: Playlist) => {
@@ -250,10 +240,137 @@ export const MusicPlayer = () => {
     }
   };
 
+  const addPlaylist = () => {
+    const newPlaylist: Playlist = {
+      id: Date.now().toString(),
+      name: newPlaylistName(),
+      songs: [],
+    };
+    setStore("playlists", (playlists) => [...playlists, newPlaylist]);
+    savePlaylists();
+    setNewPlaylistName("");
+    setDialogView(null);
+  };
+
+  const addSong = () => {
+    if (store.currentPlaylist) {
+      const newSong: Song = {
+        id: Date.now().toString(),
+        name: newSongName(),
+        src: newSongSrc(),
+        muted: false,
+      };
+      setStore("playlists", (playlists) =>
+        playlists.map((playlist) =>
+          playlist.id === store.currentPlaylist?.id
+            ? { ...playlist, songs: [...playlist.songs, newSong] }
+            : playlist
+        )
+      );
+      savePlaylists();
+      setNewSongName("");
+      setNewSongSrc("");
+      setDialogView(null);
+    }
+  };
+
+  const removePlaylist = (playlist: Playlist) => {
+    setPlaylistToDelete(playlist);
+    setDialogView("deletePlaylist");
+  };
+
+  const confirmRemovePlaylist = () => {
+    const playlistId = playlistToDelete()?.id;
+    if (playlistId) {
+      setStore("playlists", (playlists) => playlists.filter((p) => p.id !== playlistId));
+      if (store.currentPlaylist?.id === playlistId) {
+        setStore("currentPlaylist", null);
+        setStore("currentSong", null);
+        setStore("isPlaying", false);
+      }
+      savePlaylists();
+    }
+    setDialogView(null);
+    setPlaylistToDelete(null);
+  };
+
+  const removeSong = (song: Song) => {
+    setSongToDelete(song);
+    setDialogView("deleteSong");
+  };
+
+  const confirmRemoveSong = () => {
+    const song = songToDelete();
+    if (song && store.currentPlaylist) {
+      setStore("playlists", (playlists) =>
+        playlists.map((playlist) =>
+          playlist.id === store.currentPlaylist?.id
+            ? { ...playlist, songs: playlist.songs.filter((s) => s.id !== song.id) }
+            : playlist
+        )
+      );
+      if (store.currentSong?.id === song.id) {
+        setStore("currentSong", null);
+        setStore("isPlaying", false);
+      }
+      savePlaylists();
+    }
+    setDialogView(null);
+    setSongToDelete(null);
+  };
+
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
+  const copySongUrl = (songSrc: string) => {
+    navigator.clipboard.writeText(songSrc).then(
+      () => {
+        setSnackbarMessage("Song URL copied to clipboard!");
+        setSnackbarOpen(true);
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+        setSnackbarMessage("Failed to copy URL");
+        setSnackbarOpen(true);
+      }
+    );
+  };
+
+  const handleDragStart = (e: DragEvent, songId: string) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("text/plain", songId);
+      setDraggedSongId(songId);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: DragEvent, targetSongId: string) => {
+    e.preventDefault();
+    const sourceSongId = draggedSongId();
+    if (sourceSongId && store.currentPlaylist) {
+      const newSongs = [...store.currentPlaylist.songs];
+      const sourceIndex = newSongs.findIndex((s) => s.id === sourceSongId);
+      const targetIndex = newSongs.findIndex((s) => s.id === targetSongId);
+
+      if (sourceIndex !== -1 && targetIndex !== -1) {
+        const [removed] = newSongs.splice(sourceIndex, 1);
+        newSongs.splice(targetIndex, 0, removed);
+
+        setStore("playlists", (playlists) =>
+          playlists.map((playlist) =>
+            playlist.id === store.currentPlaylist?.id ? { ...playlist, songs: newSongs } : playlist
+          )
+        );
+        savePlaylists();
+      }
+    }
+    setDraggedSongId(null);
   };
 
   return (
@@ -277,17 +394,27 @@ export const MusicPlayer = () => {
                   >
                     <ListItem>
                       <ListItemText primary={playlist.name} />
+                      <IconButton
+                        edge="end"
+                        aria-label="delete"
+                        onClick={() => removePlaylist(playlist)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     </ListItem>
                   </ListItemContainer>
                 )}
               </For>
             </List>
-            <Button startIcon={<AddIcon />} onClick={() => setIsPlaylistDialogOpen(true)}>
+            <Button startIcon={<AddIcon />} onClick={() => setDialogView("playlist")}>
               Add Playlist
             </Button>
           </PlaylistList>
         </PlaylistContainer>
         <Player>
+          <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
+            Now Playing: {store.currentSong ? store.currentSong.name : "No song selected"}
+          </Typography>
           <Box
             sx={{
               display: "flex",
@@ -331,7 +458,6 @@ export const MusicPlayer = () => {
               <Switch checked={store.autoplay} onChange={toggleAutoplay} />
             </Box>
           </Box>
-
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
               {formatTime(store.currentTime)} / {formatTime(store.duration)}
@@ -346,7 +472,6 @@ export const MusicPlayer = () => {
               style={{ width: "100%" }}
             />
           </Box>
-
           <SongList>
             <Typography variant="h6">
               {store.currentPlaylist ? store.currentPlaylist.name : "No playlist selected"}
@@ -354,26 +479,50 @@ export const MusicPlayer = () => {
             <List>
               <For each={store.currentPlaylist?.songs}>
                 {(song) => (
-                  <ListItem
+                  <DraggableSongItem
+                    selected={song.id === store.currentSong?.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, song.id)}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, song.id)}
                     secondaryAction={
-                      <IconButton edge="end" aria-label="mute" onClick={() => toggleMute(song.id)}>
-                        {song.muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
-                      </IconButton>
+                      <>
+                        <IconButton
+                          edge="end"
+                          aria-label="copy"
+                          onClick={() => copySongUrl(song.src)}
+                        >
+                          <ContentCopyIcon />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          aria-label="mute"
+                          onClick={() => toggleMute(song.id)}
+                        >
+                          {song.muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
+                        </IconButton>
+                        <IconButton edge="end" aria-label="delete" onClick={() => removeSong(song)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </>
                     }
                   >
+                    <IconButton sx={{ cursor: "move" }}>
+                      <DragIndicatorIcon />
+                    </IconButton>
                     <ListItemText
                       primary={song.name}
                       secondary={song.src}
                       onClick={() => playSong(song)}
                       style={{ cursor: "pointer" }}
                     />
-                  </ListItem>
+                  </DraggableSongItem>
                 )}
               </For>
             </List>
             <Button
               startIcon={<AddIcon />}
-              onClick={() => setIsSongDialogOpen(true)}
+              onClick={() => setDialogView("song")}
               disabled={!store.currentPlaylist}
             >
               Add Song
@@ -382,7 +531,7 @@ export const MusicPlayer = () => {
         </Player>
       </PlayerContainer>
 
-      <Dialog open={isPlaylistDialogOpen()} onClose={() => setIsPlaylistDialogOpen(false)}>
+      <Dialog open={dialogView() === "playlist"} onClose={() => setDialogView(null)}>
         <DialogTitle>Add New Playlist</DialogTitle>
         <DialogContent>
           <TextField
@@ -395,12 +544,12 @@ export const MusicPlayer = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsPlaylistDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDialogView(null)}>Cancel</Button>
           <Button onClick={addPlaylist}>Add</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={isSongDialogOpen()} onClose={() => setIsSongDialogOpen(false)}>
+      <Dialog open={dialogView() === "song"} onClose={() => setDialogView(null)}>
         <DialogTitle>Add New Song</DialogTitle>
         <DialogContent>
           <TextField
@@ -420,10 +569,45 @@ export const MusicPlayer = () => {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setIsSongDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDialogView(null)}>Cancel</Button>
           <Button onClick={addSong}>Add</Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={dialogView() === "deletePlaylist"} onClose={() => setDialogView(null)}>
+        <DialogTitle>Delete Playlist</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete the playlist "{playlistToDelete()?.name}"? This action
+          cannot be undone.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogView(null)}>Cancel</Button>
+          <Button onClick={confirmRemovePlaylist} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={dialogView() === "deleteSong"} onClose={() => setDialogView(null)}>
+        <DialogTitle>Delete Song</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete the song "{songToDelete()?.name}"? This action cannot be
+          undone.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogView(null)}>Cancel</Button>
+          <Button onClick={confirmRemoveSong} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={snackbarOpen()}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        message={snackbarMessage()}
+      />
     </Container>
   );
 };
