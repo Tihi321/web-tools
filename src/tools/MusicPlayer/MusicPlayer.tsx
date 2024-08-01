@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For } from "solid-js";
+import { createSignal, For, onMount } from "solid-js";
 import { createStore } from "solid-js/store";
 import {
   Box,
@@ -28,6 +28,7 @@ import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
 import { Snackbar } from "../../components/toasts/Snackbar";
+import { filter, map, get, find, findIndex, isEmpty } from "lodash";
 
 const Container = styled(Box)`
   display: flex;
@@ -114,16 +115,15 @@ type DialogView = "playlist" | "song" | "deletePlaylist" | "deleteSong" | null;
 
 export const MusicPlayer = () => {
   const [store, setStore] = createStore({
-    playlists: [] as Playlist[],
-    currentPlaylist: null as Playlist | null,
-    currentSong: null as Song | null,
     isPlaying: false,
     volume: 1,
     currentTime: 0,
     duration: 0,
     autoplay: false,
   });
-
+  const [playlists, setPlaylists] = createSignal<Playlist[]>([]);
+  const [currentPlaylist, setCurrentPlaylist] = createSignal<Playlist | null>(null);
+  const [currentSong, setCurrentSong] = createSignal<Song | null>(null);
   const [dialogView, setDialogView] = createSignal<DialogView>(null);
   const [newPlaylistName, setNewPlaylistName] = createSignal("");
   const [newSongName, setNewSongName] = createSignal("");
@@ -135,33 +135,52 @@ export const MusicPlayer = () => {
   const [draggedSongId, setDraggedSongId] = createSignal<string | null>(null);
   let audioRef: HTMLAudioElement;
 
-  createEffect(() => {
+  const savePlaylists = (playlists: Playlist[]) => {
+    if (currentPlaylist()) {
+      const updatedPlaylist = find(playlists, (playlist) => playlist.id === currentPlaylist()!.id);
+      if (!updatedPlaylist) {
+        setCurrentPlaylist(null);
+        setCurrentSong(null);
+        setStore("isPlaying", false);
+      } else {
+        setCurrentPlaylist(updatedPlaylist);
+        if (currentSong()) {
+          if (!find(updatedPlaylist.songs, (song) => song.id === currentSong()!.id)) {
+            setCurrentSong(null);
+            setStore("isPlaying", false);
+          }
+        }
+      }
+    }
+
+    setPlaylists(playlists);
+    localStorage.setItem("web-tools/musicplayerplaylists", JSON.stringify(playlists));
+  };
+
+  onMount(() => {
     const storedPlaylists = localStorage.getItem("web-tools/musicplayerplaylists");
     if (storedPlaylists) {
-      setStore("playlists", JSON.parse(storedPlaylists));
+      setPlaylists(JSON.parse(storedPlaylists));
     }
   });
 
-  const savePlaylists = () => {
-    localStorage.setItem("web-tools/musicplayerplaylists", JSON.stringify(store.playlists));
-  };
-
   const loadPlaylist = (playlist: Playlist) => {
-    setStore("currentPlaylist", playlist);
-    setStore("currentSong", playlist.songs[0] || null);
+    setCurrentPlaylist(playlist);
+    setCurrentSong(playlist.songs[0] || null);
   };
 
   const playSong = (song: Song) => {
-    setStore("currentSong", song);
-    setStore("isPlaying", true);
-    if (audioRef) {
-      audioRef.src = song.src;
-      audioRef.play();
+    if (!song.muted) {
+      setCurrentSong(song);
+      setStore("isPlaying", true);
+      if (audioRef) {
+        audioRef.src = song.src;
+        audioRef.play();
+      }
     }
   };
 
   const togglePlay = () => {
-    setStore("isPlaying", !store.isPlaying);
     if (audioRef) {
       if (store.isPlaying) {
         audioRef.pause();
@@ -169,27 +188,40 @@ export const MusicPlayer = () => {
         audioRef.play();
       }
     }
+    setStore("isPlaying", !store.isPlaying);
   };
 
   const nextSong = () => {
-    if (store.currentPlaylist && store.currentSong) {
-      const currentIndex = store.currentPlaylist.songs.findIndex(
-        (song) => song.id === store.currentSong?.id
+    if (currentPlaylist()! && currentSong()) {
+      let currentIndex = currentPlaylist()!.songs.findIndex(
+        (song) => song.id === currentSong()?.id
       );
-      const nextIndex = (currentIndex + 1) % store.currentPlaylist.songs.length;
-      playSong(store.currentPlaylist.songs[nextIndex]);
+      let nextIndex = (currentIndex + 1) % currentPlaylist()!.songs.length;
+
+      // Skip muted songs
+      while (currentPlaylist()!.songs[nextIndex].muted) {
+        nextIndex = (nextIndex + 1) % currentPlaylist()!.songs.length;
+      }
+
+      playSong(currentPlaylist()!.songs[nextIndex]);
     }
   };
 
   const previousSong = () => {
-    if (store.currentPlaylist && store.currentSong) {
-      const currentIndex = store.currentPlaylist.songs.findIndex(
-        (song) => song.id === store.currentSong?.id
+    if (currentPlaylist()! && currentSong()) {
+      let currentIndex = currentPlaylist()!.songs.findIndex(
+        (song) => song.id === currentSong()?.id
       );
-      const previousIndex =
-        (currentIndex - 1 + store.currentPlaylist.songs.length) %
-        store.currentPlaylist.songs.length;
-      playSong(store.currentPlaylist.songs[previousIndex]);
+      let previousIndex =
+        (currentIndex - 1 + currentPlaylist()!.songs.length) % currentPlaylist()!.songs.length;
+
+      // Skip muted songs
+      while (currentPlaylist()!.songs[previousIndex].muted) {
+        previousIndex =
+          (previousIndex - 1 + currentPlaylist()!.songs.length) % currentPlaylist()!.songs.length;
+      }
+
+      playSong(currentPlaylist()!.songs[previousIndex]);
     }
   };
 
@@ -217,15 +249,13 @@ export const MusicPlayer = () => {
   };
 
   const toggleMute = (songId: string) => {
-    setStore("playlists", (playlists) =>
-      playlists.map((playlist) => ({
-        ...playlist,
-        songs: playlist.songs.map((song) =>
-          song.id === songId ? { ...song, muted: !song.muted } : song
-        ),
-      }))
-    );
-    savePlaylists();
+    const newPlaylists = map(playlists(), (playlist) => ({
+      ...playlist,
+      songs: map(playlist.songs, (song) =>
+        song.id === songId ? { ...song, muted: !song.muted } : song
+      ),
+    }));
+    savePlaylists(newPlaylists);
   };
 
   const toggleAutoplay = () => {
@@ -246,28 +276,27 @@ export const MusicPlayer = () => {
       name: newPlaylistName(),
       songs: [],
     };
-    setStore("playlists", (playlists) => [...playlists, newPlaylist]);
-    savePlaylists();
+    const newPlaylists = [...playlists(), newPlaylist];
+    savePlaylists(newPlaylists);
     setNewPlaylistName("");
     setDialogView(null);
   };
 
   const addSong = () => {
-    if (store.currentPlaylist) {
+    if (currentPlaylist()) {
       const newSong: Song = {
         id: Date.now().toString(),
         name: newSongName(),
         src: newSongSrc(),
         muted: false,
       };
-      setStore("playlists", (playlists) =>
-        playlists.map((playlist) =>
-          playlist.id === store.currentPlaylist?.id
-            ? { ...playlist, songs: [...playlist.songs, newSong] }
-            : playlist
-        )
-      );
-      savePlaylists();
+
+      const newPlaylists = map(playlists(), (playlist) => ({
+        ...playlist,
+        songs:
+          playlist.id === currentPlaylist()!.id ? [...playlist.songs, newSong] : playlist.songs,
+      }));
+      savePlaylists(newPlaylists);
       setNewSongName("");
       setNewSongSrc("");
       setDialogView(null);
@@ -280,15 +309,10 @@ export const MusicPlayer = () => {
   };
 
   const confirmRemovePlaylist = () => {
-    const playlistId = playlistToDelete()?.id;
+    const playlistId = get(playlistToDelete(), "id");
     if (playlistId) {
-      setStore("playlists", (playlists) => playlists.filter((p) => p.id !== playlistId));
-      if (store.currentPlaylist?.id === playlistId) {
-        setStore("currentPlaylist", null);
-        setStore("currentSong", null);
-        setStore("isPlaying", false);
-      }
-      savePlaylists();
+      const newPlaylists = filter(playlists(), (p) => p.id !== playlistId);
+      savePlaylists(newPlaylists);
     }
     setDialogView(null);
     setPlaylistToDelete(null);
@@ -301,19 +325,15 @@ export const MusicPlayer = () => {
 
   const confirmRemoveSong = () => {
     const song = songToDelete();
-    if (song && store.currentPlaylist) {
-      setStore("playlists", (playlists) =>
-        playlists.map((playlist) =>
-          playlist.id === store.currentPlaylist?.id
-            ? { ...playlist, songs: playlist.songs.filter((s) => s.id !== song.id) }
-            : playlist
-        )
-      );
-      if (store.currentSong?.id === song.id) {
-        setStore("currentSong", null);
-        setStore("isPlaying", false);
-      }
-      savePlaylists();
+    if (song && currentPlaylist()) {
+      const newPlaylists = map(playlists(), (playlist) => ({
+        ...playlist,
+        songs:
+          playlist.id === currentPlaylist()!.id
+            ? filter(playlist.songs, (s) => s.id !== song.id)
+            : playlist.songs,
+      }));
+      savePlaylists(newPlaylists);
     }
     setDialogView(null);
     setSongToDelete(null);
@@ -353,26 +373,24 @@ export const MusicPlayer = () => {
   const handleDrop = (e: DragEvent, targetSongId: string) => {
     e.preventDefault();
     const sourceSongId = draggedSongId();
-    if (sourceSongId && store.currentPlaylist) {
-      const newSongs = [...store.currentPlaylist.songs];
-      const sourceIndex = newSongs.findIndex((s) => s.id === sourceSongId);
-      const targetIndex = newSongs.findIndex((s) => s.id === targetSongId);
+    if (sourceSongId && currentPlaylist()) {
+      const newSongs = [...get(currentPlaylist(), "songs", [])];
+      const sourceIndex = findIndex(newSongs, (s) => s.id === sourceSongId);
+      const targetIndex = findIndex(newSongs, (s) => s.id === targetSongId);
 
       if (sourceIndex !== -1 && targetIndex !== -1) {
         const [removed] = newSongs.splice(sourceIndex, 1);
         newSongs.splice(targetIndex, 0, removed);
 
-        setStore("playlists", (playlists) =>
-          playlists.map((playlist) =>
-            playlist.id === store.currentPlaylist?.id ? { ...playlist, songs: newSongs } : playlist
-          )
-        );
-        savePlaylists();
+        const newPlaylists = map(playlists(), (playlist) => ({
+          ...playlist,
+          songs: playlist.id === currentPlaylist()!.id ? newSongs : playlist.songs,
+        }));
+        savePlaylists(newPlaylists);
       }
     }
     setDraggedSongId(null);
   };
-
   return (
     <Container>
       <audio
@@ -386,10 +404,10 @@ export const MusicPlayer = () => {
           <PlaylistList>
             <Typography variant="h6">Playlists</Typography>
             <List>
-              <For each={store.playlists}>
+              <For each={playlists()}>
                 {(playlist) => (
                   <ListItemContainer
-                    selected={playlist.id === store.currentPlaylist?.id}
+                    selected={playlist.id === get(currentPlaylist(), "id")}
                     onClick={() => loadPlaylist(playlist)}
                   >
                     <ListItem>
@@ -413,7 +431,7 @@ export const MusicPlayer = () => {
         </PlaylistContainer>
         <Player>
           <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
-            Now Playing: {store.currentSong ? store.currentSong.name : "No song selected"}
+            Now Playing: {currentSong() ? currentSong()!.name : "No song selected"}
           </Typography>
           <Box
             sx={{
@@ -443,13 +461,13 @@ export const MusicPlayer = () => {
               />
             </Box>
             <PlayerControls>
-              <IconButton onClick={previousSong} disabled={!store.currentSong}>
+              <IconButton onClick={previousSong} disabled={!currentSong()}>
                 <SkipPreviousIcon />
               </IconButton>
-              <IconButton onClick={togglePlay} disabled={!store.currentSong}>
+              <IconButton onClick={togglePlay} disabled={!currentSong()}>
                 {store.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
               </IconButton>
-              <IconButton onClick={nextSong} disabled={!store.currentSong}>
+              <IconButton onClick={nextSong} disabled={!currentSong()}>
                 <SkipNextIcon />
               </IconButton>
             </PlayerControls>
@@ -474,13 +492,13 @@ export const MusicPlayer = () => {
           </Box>
           <SongList>
             <Typography variant="h6">
-              {store.currentPlaylist ? store.currentPlaylist.name : "No playlist selected"}
+              {get(currentPlaylist(), "name", "No playlist selected")}
             </Typography>
             <List>
-              <For each={store.currentPlaylist?.songs}>
+              <For each={get(currentPlaylist(), "songs", [])}>
                 {(song) => (
                   <DraggableSongItem
-                    selected={song.id === store.currentSong?.id}
+                    selected={song.id === get(currentSong(), "id")}
                     draggable
                     onDragStart={(e) => handleDragStart(e, song.id)}
                     onDragOver={handleDragOver}
@@ -523,7 +541,7 @@ export const MusicPlayer = () => {
             <Button
               startIcon={<AddIcon />}
               onClick={() => setDialogView("song")}
-              disabled={!store.currentPlaylist}
+              disabled={isEmpty(currentPlaylist())}
             >
               Add Song
             </Button>
