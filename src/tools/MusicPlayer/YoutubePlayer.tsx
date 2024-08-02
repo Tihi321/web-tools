@@ -1,5 +1,16 @@
+import { Box } from "@suid/material";
 import { createSignal, onMount, onCleanup } from "solid-js";
+import { styled } from "solid-styled-components";
 import YouTubePlayer from "youtube-player";
+
+const Container = styled(Box)`
+  position: relative;
+  width: 640px;
+  height: 360px;
+  overflow: hidden;
+  box-shadow: 0 0 0 10px #1976d2;
+  margin: 14px auto;
+`;
 
 export interface YoutubePlayerWrapper {
   play: () => Promise<void>;
@@ -14,6 +25,7 @@ export interface YoutubePlayerWrapper {
 
 export const YoutubePlayer = (props: {
   videoId: string;
+  show: boolean;
   onReady: (player: YoutubePlayerWrapper) => void;
   onStateChange: (state: number) => void;
   onTimeUpdate: (currentTime: number, duration: number) => void;
@@ -99,5 +111,12 @@ export const YoutubePlayer = (props: {
     stopTimeUpdateInterval();
   });
 
-  return <div ref={playerRef} style="display: none;"></div>;
+  return (
+    <Container sx={{ display: props.show ? "block" : "none" }}>
+      <div
+        ref={playerRef}
+        style={{ position: "absolute", top: "0", left: "0", right: "0", bottom: "0" }}
+      ></div>
+    </Container>
+  );
 };

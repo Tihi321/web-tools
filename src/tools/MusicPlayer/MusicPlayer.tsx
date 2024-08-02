@@ -30,6 +30,7 @@ import { RangeInput } from "../../components/inputs/RangeInput";
 import { Snackbar } from "../../components/toasts/Snackbar";
 import { filter, map, get, find, findIndex, isEmpty } from "lodash";
 import { YoutubePlayer, YoutubePlayerWrapper } from "./YoutubePlayer";
+import { AudioPlayer, AudioPlayerWrapper } from "./AudioPlayer";
 
 const Container = styled(Box)`
   display: flex;
@@ -122,6 +123,7 @@ export const MusicPlayer = () => {
     currentTime: 0,
     duration: 0,
     autoplay: false,
+    video: false,
   });
   const [playlists, setPlaylists] = createSignal<Playlist[]>([]);
   const [currentPlaylist, setCurrentPlaylist] = createSignal<Playlist | null>(null);
@@ -136,7 +138,7 @@ export const MusicPlayer = () => {
   const [snackbarMessage, setSnackbarMessage] = createSignal("");
   const [draggedSongId, setDraggedSongId] = createSignal<string | null>(null);
   const [youtubePlayer, setYoutubePlayer] = createSignal<YoutubePlayerWrapper | null>(null);
-  let audioRef: HTMLAudioElement;
+  const [audioPlayer, setAudioPlayer] = createSignal<AudioPlayerWrapper | null>(null);
 
   const savePlaylists = (playlists: Playlist[]) => {
     if (currentPlaylist()) {
@@ -161,10 +163,14 @@ export const MusicPlayer = () => {
   };
 
   onMount(() => {
+    const autoplay = localStorage.getItem("web-tools/musicplayerautoplay");
+    const video = localStorage.getItem("web-tools/musicplayervideo");
     const storedPlaylists = localStorage.getItem("web-tools/musicplayerplaylists");
     if (storedPlaylists) {
       setPlaylists(JSON.parse(storedPlaylists));
     }
+    setStore("autoplay", autoplay === "true");
+    setStore("video", video === "true");
   });
 
   const loadPlaylist = (playlist: Playlist) => {
@@ -177,9 +183,8 @@ export const MusicPlayer = () => {
       if (currentSong()?.type === "youtube" && youtubePlayer()) {
         youtubePlayer()!.stop();
       }
-      if (audioRef) {
-        audioRef.pause();
-        audioRef.currentTime = 0;
+      if (currentSong()?.type === "audio" && audioPlayer()) {
+        audioPlayer()!.stop();
       }
 
       setCurrentSong(song);
@@ -187,12 +192,10 @@ export const MusicPlayer = () => {
       setStore("currentTime", 0);
 
       if (song.type === "audio") {
-        if (audioRef) {
-          audioRef.src = song.src;
-          audioRef.play().catch((error) => {
-            console.error("Error playing audio:", error);
-            setStore("isPlaying", false);
-          });
+        const player = audioPlayer();
+        if (player) {
+          player.loadAudioById(song.src);
+          player.play();
         }
       } else if (song.type === "youtube") {
         const player = youtubePlayer();
@@ -200,6 +203,7 @@ export const MusicPlayer = () => {
           const videoId = getYoutubeId(song.src);
           if (videoId) {
             player.loadVideoById(videoId);
+            player.play();
           } else {
             console.error("Invalid YouTube URL");
             setStore("isPlaying", false);
@@ -211,11 +215,12 @@ export const MusicPlayer = () => {
 
   const togglePlay = () => {
     if (currentSong()?.type === "audio") {
-      if (audioRef) {
+      const player = audioPlayer();
+      if (player) {
         if (store.isPlaying) {
-          audioRef.pause();
+          player.pause();
         } else {
-          audioRef.play();
+          player.play();
         }
       }
     } else if (currentSong()?.type === "youtube") {
@@ -224,7 +229,7 @@ export const MusicPlayer = () => {
         if (store.isPlaying) {
           player.pause();
         } else {
-          player.stop();
+          player.play();
         }
       }
     }
@@ -278,16 +283,22 @@ export const MusicPlayer = () => {
   const handleVolumeChange = (newVolume: string) => {
     const newVolumeNumber = Number(newVolume);
     setStore("volume", newVolumeNumber);
-    if (audioRef) {
-      audioRef.volume = newVolumeNumber;
+    if (audioPlayer()) {
+      audioPlayer()!.setVolume(newVolumeNumber);
     }
     if (youtubePlayer()) {
-      youtubePlayer()!.setVolume(newVolumeNumber * 100);
+      youtubePlayer()!.setVolume(newVolumeNumber);
     }
   };
 
   const toggleAutoplay = () => {
     setStore("autoplay", !store.autoplay);
+    localStorage.setItem("web-tools/musicplayerautoplay", store.autoplay.toString());
+  };
+
+  const toggleVideo = () => {
+    setStore("video", !store.video);
+    localStorage.setItem("web-tools/musicplayervideo", store.video.toString());
   };
 
   const handleSongEnd = () => {
@@ -442,42 +453,15 @@ export const MusicPlayer = () => {
     const target = e.target as HTMLInputElement;
     const newTime = Number(target.value);
     setStore("currentTime", newTime);
-    if (currentSong()?.type === "audio" && audioRef) {
-      audioRef.currentTime = newTime;
-      if (store.isPlaying) {
-        audioRef.play();
-      }
+    if (currentSong()?.type === "audio" && audioPlayer()) {
+      audioPlayer()!.seekTo(newTime);
     } else if (currentSong()?.type === "youtube" && youtubePlayer()) {
       youtubePlayer()!.seekTo(newTime);
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef) {
-      setStore("currentTime", audioRef.currentTime);
-      setStore("duration", audioRef.duration);
-    }
-  };
-
   return (
     <Container>
-      <audio
-        ref={audioRef!}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleSongEnd}
-        style={{ display: "none" }}
-      />
-      <YoutubePlayer
-        videoId=""
-        onReady={(player) => setYoutubePlayer(player)}
-        onStateChange={handleYoutubeStateChange}
-        onTimeUpdate={(currentTime, duration) => {
-          if (currentSong()?.type === "youtube") {
-            setStore("currentTime", currentTime);
-            setStore("duration", duration);
-          }
-        }}
-      />
       <PlayerContainer>
         <PlaylistContainer>
           <PlaylistList>
@@ -509,6 +493,40 @@ export const MusicPlayer = () => {
           </PlaylistList>
         </PlaylistContainer>
         <Player>
+          <AudioPlayer
+            title={currentSong()?.name || ""}
+            show={currentSong()?.type === "audio" && store.video}
+            audioSrc={currentSong()?.type === "audio" ? currentSong()!.src : ""}
+            onReady={(player) => setAudioPlayer(player)}
+            onStateChange={(state) => {
+              if (state === 0) {
+                handleSongEnd();
+              } else if (state === 1) {
+                setStore("isPlaying", true);
+              } else if (state === 2) {
+                setStore("isPlaying", false);
+              }
+            }}
+            onTimeUpdate={(currentTime, duration) => {
+              if (currentSong()?.type === "audio") {
+                setStore("currentTime", currentTime);
+                setStore("duration", duration);
+              }
+            }}
+          />
+
+          <YoutubePlayer
+            videoId=""
+            show={currentSong()?.type === "youtube" && store.video}
+            onReady={(player) => setYoutubePlayer(player)}
+            onStateChange={handleYoutubeStateChange}
+            onTimeUpdate={(currentTime, duration) => {
+              if (currentSong()?.type === "youtube") {
+                setStore("currentTime", currentTime);
+                setStore("duration", duration);
+              }
+            }}
+          />
           <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
             Now Playing: {currentSong() ? currentSong()!.name : "No song selected"}
           </Typography>
@@ -550,9 +568,15 @@ export const MusicPlayer = () => {
                 <SkipNextIcon />
               </IconButton>
             </PlayerControls>
-            <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              <Typography>Autoplay</Typography>
-              <Switch checked={store.autoplay} onChange={toggleAutoplay} />
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Typography>Autoplay</Typography>
+                <Switch checked={store.autoplay} onChange={toggleAutoplay} />
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center" }}>
+                <Typography>Video</Typography>
+                <Switch checked={store.video} onChange={toggleVideo} />
+              </Box>
             </Box>
           </Box>
           <Box sx={{ mb: 2 }}>
