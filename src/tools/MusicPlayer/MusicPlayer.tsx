@@ -30,10 +30,10 @@ import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
-import { Snackbar } from "../../components/toasts/Snackbar";
-import { filter, map, get, find, findIndex, isEmpty } from "lodash";
+import { filter, map, get, find, findIndex, isEmpty, throttle } from "lodash";
 import { YoutubePlayer, YoutubePlayerWrapper } from "./YoutubePlayer";
 import { AudioPlayer, AudioPlayerWrapper } from "./AudioPlayer";
+import { Snackbar } from "../../components/toasts/Snackbar";
 
 const Container = styled(Box)`
   display: flex;
@@ -147,6 +147,7 @@ export const MusicPlayer = () => {
   const [draggedPlaylistId, setDraggedPlaylistId] = createSignal<string | null>(null);
   const [youtubePlayer, setYoutubePlayer] = createSignal<YoutubePlayerWrapper | null>(null);
   const [audioPlayer, setAudioPlayer] = createSignal<AudioPlayerWrapper | null>(null);
+  const [error, setError] = createSignal<string | null>(null);
 
   const savePlaylists = (playlists: Playlist[]) => {
     if (currentPlaylist()) {
@@ -496,21 +497,32 @@ export const MusicPlayer = () => {
     }
   };
 
-  const getYoutubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : null;
+  const handleYoutubeError = (error: any) => {
+    console.error("YouTube player error:", error);
+    setError(`YouTube player error: ${error.message || "Unknown error"}`);
+    setSnackbarMessage("An error occurred with the YouTube player. Please try again.");
+    setSnackbarOpen(true);
   };
+
+  const throttledSeekTo = throttle((time: number) => {
+    if (currentSong()?.type === "audio" && audioPlayer()) {
+      audioPlayer()!.seekTo(time);
+    } else if (currentSong()?.type === "youtube" && youtubePlayer()) {
+      youtubePlayer()!.seekTo(time);
+    }
+  }, 500);
 
   const handleTimeChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const newTime = Number(target.value);
     setStore("currentTime", newTime);
-    if (currentSong()?.type === "audio" && audioPlayer()) {
-      audioPlayer()!.seekTo(newTime);
-    } else if (currentSong()?.type === "youtube" && youtubePlayer()) {
-      youtubePlayer()!.seekTo(newTime);
-    }
+    throttledSeekTo(newTime);
+  };
+
+  const getYoutubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
   };
 
   return (
@@ -607,6 +619,7 @@ export const MusicPlayer = () => {
                 setStore("duration", duration);
               }
             }}
+            onError={handleYoutubeError}
           />
           <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>
             Now Playing: {currentSong() ? currentSong()!.name : "No song selected"}
@@ -810,6 +823,13 @@ export const MusicPlayer = () => {
         autoHideDuration={3000}
         onClose={() => setSnackbarOpen(false)}
         message={snackbarMessage()}
+      />
+
+      <Snackbar
+        open={!!error()}
+        autoHideDuration={5000}
+        onClose={() => setError(null)}
+        message={error() || ""}
       />
     </Container>
   );

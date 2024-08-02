@@ -1,7 +1,8 @@
 import { Box } from "@suid/material";
-import { createSignal, onMount, onCleanup } from "solid-js";
+import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 import { styled } from "solid-styled-components";
 import YouTubePlayer from "youtube-player";
+import { debounce } from "lodash";
 
 const Container = styled(Box)`
   position: relative;
@@ -29,89 +30,110 @@ export const YoutubePlayer = (props: {
   onReady: (player: YoutubePlayerWrapper) => void;
   onStateChange: (state: number) => void;
   onTimeUpdate: (currentTime: number, duration: number) => void;
+  onError: (error: any) => void;
 }) => {
   let playerRef: HTMLDivElement | undefined;
   let player: any;
   const [isPlaying, setIsPlaying] = createSignal(false);
-  let intervalId: number | undefined;
+  const [lastKnownTime, setLastKnownTime] = createSignal(0);
+  const [lastKnownDuration, setLastKnownDuration] = createSignal(0);
 
-  const startTimeUpdateInterval = () => {
-    intervalId = window.setInterval(async () => {
-      if (player && isPlaying()) {
-        const currentTime = await player.getCurrentTime();
-        const duration = await player.getDuration();
-        props.onTimeUpdate(currentTime, duration);
-      }
-    }, 1000);
-  };
-
-  const stopTimeUpdateInterval = () => {
-    if (intervalId !== undefined) {
-      clearInterval(intervalId);
-      intervalId = undefined;
+  const debouncedTimeUpdate = debounce(() => {
+    if (player && isPlaying()) {
+      player
+        .getCurrentTime()
+        .then((currentTime: number) => {
+          setLastKnownTime(currentTime);
+          props.onTimeUpdate(currentTime, lastKnownDuration());
+        })
+        .catch((error: any) => props.onError(error));
     }
-  };
+  }, 1000);
+
+  createEffect(() => {
+    if (isPlaying()) {
+      const intervalId = setInterval(debouncedTimeUpdate, 1000);
+      onCleanup(() => clearInterval(intervalId));
+    }
+  });
 
   const youtubePlayerWrapper: YoutubePlayerWrapper = {
     play: async () => {
-      await player.playVideo();
-      setIsPlaying(true);
-      startTimeUpdateInterval();
+      try {
+        await player.playVideo();
+        setIsPlaying(true);
+      } catch (error) {
+        props.onError(error);
+      }
     },
     pause: async () => {
-      await player.pauseVideo();
-      setIsPlaying(false);
-      stopTimeUpdateInterval();
+      try {
+        await player.pauseVideo();
+        setIsPlaying(false);
+      } catch (error) {
+        props.onError(error);
+      }
     },
     stop: async () => {
-      await player.stopVideo();
-      setIsPlaying(false);
-      stopTimeUpdateInterval();
+      try {
+        await player.stopVideo();
+        setIsPlaying(false);
+      } catch (error) {
+        props.onError(error);
+      }
     },
     setVolume: (volume: number) => {
-      player.setVolume(volume * 100);
+      player.setVolume(volume * 100).catch((error: any) => props.onError(error));
     },
     seekTo: (time: number) => {
-      player.seekTo(time);
+      player.seekTo(time).catch((error: any) => props.onError(error));
     },
     loadVideoById: (videoId: string) => {
-      player.loadVideoById(videoId);
+      player.loadVideoById(videoId).catch((error: any) => props.onError(error));
     },
-    getDuration: () => player.getDuration(),
-    getCurrentTime: () => player.getCurrentTime(),
+    getDuration: async () => {
+      try {
+        const duration = await player.getDuration();
+        setLastKnownDuration(duration);
+        return duration;
+      } catch (error) {
+        props.onError(error);
+        return lastKnownDuration();
+      }
+    },
+    getCurrentTime: async () => {
+      try {
+        const currentTime = await player.getCurrentTime();
+        setLastKnownTime(currentTime);
+        return currentTime;
+      } catch (error) {
+        props.onError(error);
+        return lastKnownTime();
+      }
+    },
   };
 
   onMount(() => {
     player = YouTubePlayer(playerRef as HTMLDivElement, {
       videoId: props.videoId,
       playerVars: {
-        autoplay: 0, // Don't autoplay the video
-        controls: 0, // Show video controls
-        disablekb: 1, // Disable keyboard controls
-        fs: 1, // Disable fullscreen button
-        modestbranding: 1, // Hide YouTube logo
-        playsinline: 1, // Play video inline on mobile devices
-        rel: 0, // Don't show related videos at the end
-        iv_load_policy: 3, // Don't show video annotations
+        autoplay: 0,
+        controls: 0,
+        disablekb: 1,
+        fs: 1,
+        modestbranding: 1,
+        playsinline: 1,
+        rel: 0,
+        iv_load_policy: 3,
       },
     });
 
     player.on("ready", () => props.onReady(youtubePlayerWrapper));
     player.on("stateChange", (event: { data: number }) => {
       props.onStateChange(event.data);
-      if (event.data === 1) {
-        // Playing
-        setIsPlaying(true);
-        startTimeUpdateInterval();
-      } else {
-        setIsPlaying(false);
-        stopTimeUpdateInterval();
-      }
+      setIsPlaying(event.data === 1);
     });
-  });
-
-  onCleanup(() => {
-    stopTimeUpdateInterval();
+    player.on("error", (error: any) => props.onError(error));
   });
 
   return (
