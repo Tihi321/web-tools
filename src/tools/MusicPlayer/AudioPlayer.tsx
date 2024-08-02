@@ -23,7 +23,7 @@ export interface AudioPlayerWrapper {
   stop: () => Promise<void>;
   setVolume: (volume: number) => void;
   seekTo: (time: number) => void;
-  loadAudioById: (audioSrc: string) => void;
+  loadAudioBy: (audioSrc: string) => void;
   getDuration: () => number;
   getCurrentTime: () => number;
 }
@@ -69,7 +69,7 @@ export const AudioPlayer = (props: {
         audioRef.currentTime = time;
       }
     },
-    loadAudioById: (audioSrc: string) => {
+    loadAudioBy: (audioSrc: string) => {
       if (audioRef) {
         audioRef.src = audioSrc;
         audioRef.load();
@@ -88,7 +88,6 @@ export const AudioPlayer = (props: {
   const handleLoadedMetadata = () => {
     if (audioRef) {
       setDuration(audioRef.duration);
-      props.onReady(audioPlayerWrapper);
     }
   };
 
@@ -98,10 +97,10 @@ export const AudioPlayer = (props: {
 
   createEffect(() => {
     if (audioRef) {
-      audioRef.src = props.audioSrc;
       audioRef.addEventListener("loadedmetadata", handleLoadedMetadata);
       audioRef.addEventListener("timeupdate", handleTimeUpdate);
       audioRef.addEventListener("ended", handleEnded);
+      props.onReady(audioPlayerWrapper);
     }
   });
 

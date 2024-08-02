@@ -21,6 +21,8 @@ import SkipNextIcon from "@suid/icons-material/SkipNext";
 import SkipPreviousIcon from "@suid/icons-material/SkipPrevious";
 import VolumeUpIcon from "@suid/icons-material/VolumeUp";
 import VolumeOffIcon from "@suid/icons-material/VolumeOff";
+import CheckIcon from "@suid/icons-material/Check";
+import CloseIcon from "@suid/icons-material/Close";
 import AddIcon from "@suid/icons-material/Add";
 import DeleteIcon from "@suid/icons-material/Delete";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
@@ -88,8 +90,10 @@ const SongList = styled(Box)`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
-const SongItem = styled(ListItem)<{ selected: boolean }>`
+const SongItem = styled(ListItem)<{ selected: boolean; disabled: boolean }>`
   background-color: ${(props) => (props.selected ? "#f5f5f5" : "transparent")};
+  color: ${(props) => (props.disabled ? "#a0a0a0" : "inherit")};
+  text-decoration: ${(props) => (props.disabled ? "line-through" : "none")};
   &:hover {
     background-color: #e0e0e0;
   }
@@ -104,7 +108,7 @@ interface Song {
   id: string;
   name: string;
   src: string;
-  muted: boolean;
+  disabled: boolean;
   type: "audio" | "youtube";
 }
 
@@ -175,18 +179,13 @@ export const MusicPlayer = () => {
 
   const loadPlaylist = (playlist: Playlist) => {
     setCurrentPlaylist(playlist);
-    setCurrentSong(playlist.songs[0] || null);
+    setCurrentSong(null);
+    resetPlayState();
   };
 
   const playSong = (song: Song) => {
-    if (!song.muted) {
-      if (currentSong()?.type === "youtube" && youtubePlayer()) {
-        youtubePlayer()!.stop();
-      }
-      if (currentSong()?.type === "audio" && audioPlayer()) {
-        audioPlayer()!.stop();
-      }
-
+    if (!song.disabled) {
+      resetPlayState();
       setCurrentSong(song);
       setStore("isPlaying", true);
       setStore("currentTime", 0);
@@ -194,7 +193,7 @@ export const MusicPlayer = () => {
       if (song.type === "audio") {
         const player = audioPlayer();
         if (player) {
-          player.loadAudioById(song.src);
+          player.loadAudioBy(song.src);
           player.play();
         }
       } else if (song.type === "youtube") {
@@ -214,37 +213,44 @@ export const MusicPlayer = () => {
   };
 
   const togglePlay = () => {
-    if (currentSong()?.type === "audio") {
-      const player = audioPlayer();
-      if (player) {
-        if (store.isPlaying) {
-          player.pause();
-        } else {
-          player.play();
+    if (currentSong()) {
+      if (currentSong()!.type === "audio") {
+        const player = audioPlayer();
+        if (player) {
+          store.isPlaying ? player.pause() : player.play();
+        }
+      } else if (currentSong()!.type === "youtube") {
+        const player = youtubePlayer();
+        if (player) {
+          store.isPlaying ? player.pause() : player.play();
         }
       }
-    } else if (currentSong()?.type === "youtube") {
-      const player = youtubePlayer();
-      if (player) {
-        if (store.isPlaying) {
-          player.pause();
-        } else {
-          player.play();
-        }
-      }
+      setStore("isPlaying", !store.isPlaying);
     }
-    setStore("isPlaying", !store.isPlaying);
+  };
+
+  const resetPlayState = () => {
+    setStore("isPlaying", false);
+    setStore("currentTime", 0);
+    setStore("duration", 0);
+    if (audioPlayer()) {
+      audioPlayer()!.stop();
+    }
+    if (youtubePlayer()) {
+      youtubePlayer()!.stop();
+    }
   };
 
   const nextSong = () => {
-    if (currentPlaylist()! && currentSong()) {
-      let currentIndex = currentPlaylist()!.songs.findIndex(
-        (song) => song.id === currentSong()?.id
+    if (currentPlaylist() && currentSong()) {
+      let currentIndex = findIndex(
+        currentPlaylist()!.songs,
+        (song) => song.id === currentSong()!.id
       );
       let nextIndex = (currentIndex + 1) % currentPlaylist()!.songs.length;
 
-      // Skip muted songs
-      while (currentPlaylist()!.songs[nextIndex].muted) {
+      // Skip disabled songs
+      while (currentPlaylist()!.songs[nextIndex].disabled) {
         nextIndex = (nextIndex + 1) % currentPlaylist()!.songs.length;
       }
 
@@ -253,15 +259,16 @@ export const MusicPlayer = () => {
   };
 
   const previousSong = () => {
-    if (currentPlaylist()! && currentSong()) {
-      let currentIndex = currentPlaylist()!.songs.findIndex(
-        (song) => song.id === currentSong()?.id
+    if (currentPlaylist() && currentSong()) {
+      let currentIndex = findIndex(
+        currentPlaylist()!.songs,
+        (song) => song.id === currentSong()!.id
       );
       let previousIndex =
         (currentIndex - 1 + currentPlaylist()!.songs.length) % currentPlaylist()!.songs.length;
 
-      // Skip muted songs
-      while (currentPlaylist()!.songs[previousIndex].muted) {
+      // Skip disabled songs
+      while (currentPlaylist()!.songs[previousIndex].disabled) {
         previousIndex =
           (previousIndex - 1 + currentPlaylist()!.songs.length) % currentPlaylist()!.songs.length;
       }
@@ -274,7 +281,7 @@ export const MusicPlayer = () => {
     const newPlaylists = map(playlists(), (playlist) => ({
       ...playlist,
       songs: map(playlist.songs, (song) =>
-        song.id === songId ? { ...song, muted: !song.muted } : song
+        song.id === songId ? { ...song, disabled: !song.disabled } : song
       ),
     }));
     savePlaylists(newPlaylists);
@@ -328,7 +335,7 @@ export const MusicPlayer = () => {
         id: Date.now().toString(),
         name: newSongName(),
         src: newSongSrc(),
-        muted: false,
+        disabled: false,
         type: youtubeId ? "youtube" : "audio",
       };
 
@@ -432,7 +439,6 @@ export const MusicPlayer = () => {
     }
     setDraggedSongId(null);
   };
-
   const handleYoutubeStateChange = (state: number) => {
     if (state === 0) {
       handleSongEnd();
@@ -602,12 +608,16 @@ export const MusicPlayer = () => {
                 {(song) => (
                   <DraggableSongItem
                     selected={song.id === get(currentSong(), "id")}
+                    disabled={song.disabled}
                     draggable
                     onDragStart={(e) => handleDragStart(e, song.id)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, song.id)}
                     secondaryAction={
                       <>
+                        <IconButton edge="end" aria-label="delete" onClick={() => removeSong(song)}>
+                          <DeleteIcon />
+                        </IconButton>
                         <IconButton
                           edge="end"
                           aria-label="copy"
@@ -620,10 +630,7 @@ export const MusicPlayer = () => {
                           aria-label="mute"
                           onClick={() => toggleDisable(song.id)}
                         >
-                          {song.muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
-                        </IconButton>
-                        <IconButton edge="end" aria-label="delete" onClick={() => removeSong(song)}>
-                          <DeleteIcon />
+                          {song.disabled ? <CloseIcon /> : <CheckIcon />}
                         </IconButton>
                       </>
                     }
