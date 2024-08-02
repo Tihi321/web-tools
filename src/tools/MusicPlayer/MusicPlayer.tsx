@@ -29,6 +29,7 @@ import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
 import { Snackbar } from "../../components/toasts/Snackbar";
 import { filter, map, get, find, findIndex, isEmpty } from "lodash";
+import { YoutubePlayer, YoutubePlayerWrapper } from "./YoutubePlayer";
 
 const Container = styled(Box)`
   display: flex;
@@ -103,6 +104,7 @@ interface Song {
   name: string;
   src: string;
   muted: boolean;
+  type: "audio" | "youtube";
 }
 
 interface Playlist {
@@ -133,6 +135,7 @@ export const MusicPlayer = () => {
   const [snackbarOpen, setSnackbarOpen] = createSignal(false);
   const [snackbarMessage, setSnackbarMessage] = createSignal("");
   const [draggedSongId, setDraggedSongId] = createSignal<string | null>(null);
+  const [youtubePlayer, setYoutubePlayer] = createSignal<YoutubePlayerWrapper | null>(null);
   let audioRef: HTMLAudioElement;
 
   const savePlaylists = (playlists: Playlist[]) => {
@@ -171,21 +174,58 @@ export const MusicPlayer = () => {
 
   const playSong = (song: Song) => {
     if (!song.muted) {
+      if (currentSong()?.type === "youtube" && youtubePlayer()) {
+        youtubePlayer()!.stop();
+      }
+      if (audioRef) {
+        audioRef.pause();
+        audioRef.currentTime = 0;
+      }
+
       setCurrentSong(song);
       setStore("isPlaying", true);
-      if (audioRef) {
-        audioRef.src = song.src;
-        audioRef.play();
+      setStore("currentTime", 0);
+
+      if (song.type === "audio") {
+        if (audioRef) {
+          audioRef.src = song.src;
+          audioRef.play().catch((error) => {
+            console.error("Error playing audio:", error);
+            setStore("isPlaying", false);
+          });
+        }
+      } else if (song.type === "youtube") {
+        const player = youtubePlayer();
+        if (player) {
+          const videoId = getYoutubeId(song.src);
+          if (videoId) {
+            player.loadVideoById(videoId);
+          } else {
+            console.error("Invalid YouTube URL");
+            setStore("isPlaying", false);
+          }
+        }
       }
     }
   };
 
   const togglePlay = () => {
-    if (audioRef) {
-      if (store.isPlaying) {
-        audioRef.pause();
-      } else {
-        audioRef.play();
+    if (currentSong()?.type === "audio") {
+      if (audioRef) {
+        if (store.isPlaying) {
+          audioRef.pause();
+        } else {
+          audioRef.play();
+        }
+      }
+    } else if (currentSong()?.type === "youtube") {
+      const player = youtubePlayer();
+      if (player) {
+        if (store.isPlaying) {
+          player.pause();
+        } else {
+          player.stop();
+        }
       }
     }
     setStore("isPlaying", !store.isPlaying);
@@ -225,30 +265,7 @@ export const MusicPlayer = () => {
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef) {
-      setStore("currentTime", audioRef.currentTime);
-      setStore("duration", audioRef.duration);
-    }
-  };
-
-  const handleTimeChange = (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    if (audioRef) {
-      audioRef.currentTime = Number(target.value);
-    }
-  };
-
-  const handleVolumeChange = (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    if (audioRef) {
-      const newVolume = Number(target.value);
-      audioRef.volume = newVolume;
-      setStore("volume", newVolume);
-    }
-  };
-
-  const toggleMute = (songId: string) => {
+  const toggleDisable = (songId: string) => {
     const newPlaylists = map(playlists(), (playlist) => ({
       ...playlist,
       songs: map(playlist.songs, (song) =>
@@ -256,6 +273,17 @@ export const MusicPlayer = () => {
       ),
     }));
     savePlaylists(newPlaylists);
+  };
+
+  const handleVolumeChange = (newVolume: string) => {
+    const newVolumeNumber = Number(newVolume);
+    setStore("volume", newVolumeNumber);
+    if (audioRef) {
+      audioRef.volume = newVolumeNumber;
+    }
+    if (youtubePlayer()) {
+      youtubePlayer()!.setVolume(newVolumeNumber * 100);
+    }
   };
 
   const toggleAutoplay = () => {
@@ -284,11 +312,13 @@ export const MusicPlayer = () => {
 
   const addSong = () => {
     if (currentPlaylist()) {
+      const youtubeId = getYoutubeId(newSongSrc());
       const newSong: Song = {
         id: Date.now().toString(),
         name: newSongName(),
         src: newSongSrc(),
         muted: false,
+        type: youtubeId ? "youtube" : "audio",
       };
 
       const newPlaylists = map(playlists(), (playlist) => ({
@@ -391,6 +421,44 @@ export const MusicPlayer = () => {
     }
     setDraggedSongId(null);
   };
+
+  const handleYoutubeStateChange = (state: number) => {
+    if (state === 0) {
+      handleSongEnd();
+    } else if (state === 1) {
+      setStore("isPlaying", true);
+    } else if (state === 2) {
+      setStore("isPlaying", false);
+    }
+  };
+
+  const getYoutubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
+  const handleTimeChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    const newTime = Number(target.value);
+    setStore("currentTime", newTime);
+    if (currentSong()?.type === "audio" && audioRef) {
+      audioRef.currentTime = newTime;
+      if (store.isPlaying) {
+        audioRef.play();
+      }
+    } else if (currentSong()?.type === "youtube" && youtubePlayer()) {
+      youtubePlayer()!.seekTo(newTime);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef) {
+      setStore("currentTime", audioRef.currentTime);
+      setStore("duration", audioRef.duration);
+    }
+  };
+
   return (
     <Container>
       <audio
@@ -398,6 +466,17 @@ export const MusicPlayer = () => {
         onTimeUpdate={handleTimeUpdate}
         onEnded={handleSongEnd}
         style={{ display: "none" }}
+      />
+      <YoutubePlayer
+        videoId=""
+        onReady={(player) => setYoutubePlayer(player)}
+        onStateChange={handleYoutubeStateChange}
+        onTimeUpdate={(currentTime, duration) => {
+          if (currentSong()?.type === "youtube") {
+            setStore("currentTime", currentTime);
+            setStore("duration", duration);
+          }
+        }}
       />
       <PlayerContainer>
         <PlaylistContainer>
@@ -456,7 +535,7 @@ export const MusicPlayer = () => {
                 max="1"
                 step="0.01"
                 value={store.volume}
-                onInput={handleVolumeChange}
+                onInput={(event) => handleVolumeChange((event.target as HTMLInputElement).value)}
                 style={{ width: "200px", "margin-left": "16px" }}
               />
             </Box>
@@ -515,7 +594,7 @@ export const MusicPlayer = () => {
                         <IconButton
                           edge="end"
                           aria-label="mute"
-                          onClick={() => toggleMute(song.id)}
+                          onClick={() => toggleDisable(song.id)}
                         >
                           {song.muted ? <VolumeOffIcon /> : <VolumeUpIcon />}
                         </IconButton>
@@ -532,7 +611,7 @@ export const MusicPlayer = () => {
                       primary={song.name}
                       secondary={song.src}
                       onClick={() => playSong(song)}
-                      style={{ cursor: "pointer" }}
+                      style={{ cursor: "pointer", "word-break": "break-all" }}
                     />
                   </DraggableSongItem>
                 )}
