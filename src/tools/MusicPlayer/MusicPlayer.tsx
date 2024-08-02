@@ -25,6 +25,7 @@ import CheckIcon from "@suid/icons-material/Check";
 import CloseIcon from "@suid/icons-material/Close";
 import AddIcon from "@suid/icons-material/Add";
 import DeleteIcon from "@suid/icons-material/Delete";
+import EditIcon from "@suid/icons-material/Edit";
 import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
@@ -74,14 +75,6 @@ const PlaylistList = styled(Box)`
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
-const ListItemContainer = styled(Box)<{ selected: boolean }>`
-  background-color: ${(props) => (props.selected ? "#f5f5f5" : "transparent")};
-  cursor: pointer;
-  &:hover {
-    background-color: #e0e0e0;
-  }
-`;
-
 const SongList = styled(Box)`
   flex-grow: 1;
   background-color: #fff;
@@ -104,6 +97,13 @@ const DraggableSongItem = styled(SongItem)`
   align-items: center;
 `;
 
+const DraggablePlaylistItem = styled(ListItem)<{ selected: boolean }>`
+  display: flex;
+  align-items: center;
+  padding-left: 0 !important;
+  background-color: ${(props) => (props.selected ? "#f5f5f5" : "transparent")};
+`;
+
 interface Song {
   id: string;
   name: string;
@@ -119,6 +119,7 @@ interface Playlist {
 }
 
 type DialogView = "playlist" | "song" | "deletePlaylist" | "deleteSong" | null;
+type DialogMode = "add" | "edit";
 
 export const MusicPlayer = () => {
   const [store, setStore] = createStore({
@@ -132,6 +133,8 @@ export const MusicPlayer = () => {
   const [playlists, setPlaylists] = createSignal<Playlist[]>([]);
   const [currentPlaylist, setCurrentPlaylist] = createSignal<Playlist | null>(null);
   const [currentSong, setCurrentSong] = createSignal<Song | null>(null);
+  const [dialogMode, setDialogMode] = createSignal<DialogMode>("add");
+  const [editingPlaylistId, setEditingPlaylistId] = createSignal<string | null>(null);
   const [dialogView, setDialogView] = createSignal<DialogView>(null);
   const [newPlaylistName, setNewPlaylistName] = createSignal("");
   const [newSongName, setNewSongName] = createSignal("");
@@ -141,6 +144,7 @@ export const MusicPlayer = () => {
   const [snackbarOpen, setSnackbarOpen] = createSignal(false);
   const [snackbarMessage, setSnackbarMessage] = createSignal("");
   const [draggedSongId, setDraggedSongId] = createSignal<string | null>(null);
+  const [draggedPlaylistId, setDraggedPlaylistId] = createSignal<string | null>(null);
   const [youtubePlayer, setYoutubePlayer] = createSignal<YoutubePlayerWrapper | null>(null);
   const [audioPlayer, setAudioPlayer] = createSignal<AudioPlayerWrapper | null>(null);
 
@@ -176,6 +180,33 @@ export const MusicPlayer = () => {
     setStore("autoplay", autoplay === "true");
     setStore("video", video === "true");
   });
+
+  const addOrUpdatePlaylist = () => {
+    if (dialogMode() === "add") {
+      const newPlaylist: Playlist = {
+        id: Date.now().toString(),
+        name: newPlaylistName(),
+        songs: [],
+      };
+      const newPlaylists = [...playlists(), newPlaylist];
+      savePlaylists(newPlaylists);
+    } else {
+      const updatedPlaylists = map(playlists(), (playlist) =>
+        playlist.id === editingPlaylistId() ? { ...playlist, name: newPlaylistName() } : playlist
+      );
+      savePlaylists(updatedPlaylists);
+    }
+    setNewPlaylistName("");
+    setDialogView(null);
+    setEditingPlaylistId(null);
+  };
+
+  const openEditPlaylistDialog = (playlist: Playlist) => {
+    setDialogMode("edit");
+    setNewPlaylistName(playlist.name);
+    setEditingPlaylistId(playlist.id);
+    setDialogView("playlist");
+  };
 
   const loadPlaylist = (playlist: Playlist) => {
     setCurrentPlaylist(playlist);
@@ -316,18 +347,6 @@ export const MusicPlayer = () => {
     }
   };
 
-  const addPlaylist = () => {
-    const newPlaylist: Playlist = {
-      id: Date.now().toString(),
-      name: newPlaylistName(),
-      songs: [],
-    };
-    const newPlaylists = [...playlists(), newPlaylist];
-    savePlaylists(newPlaylists);
-    setNewPlaylistName("");
-    setDialogView(null);
-  };
-
   const addSong = () => {
     if (currentPlaylist()) {
       const youtubeId = getYoutubeId(newSongSrc());
@@ -439,6 +458,34 @@ export const MusicPlayer = () => {
     }
     setDraggedSongId(null);
   };
+
+  const handlePlaylistDragStart = (e: DragEvent, playlistId: string) => {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData("text/plain", playlistId);
+    }
+    setDraggedPlaylistId(playlistId);
+  };
+
+  const handlePlaylistDragOver = (e: DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handlePlaylistDrop = (e: DragEvent, targetPlaylistId: string) => {
+    e.preventDefault();
+    const draggedId = draggedPlaylistId();
+    if (!draggedId || draggedId === targetPlaylistId) return;
+
+    const newOrder = filter(playlists(), (playlist) => playlist.id !== draggedId);
+    const draggedPlaylist = find(playlists(), (playlist) => playlist.id === draggedId);
+    if (draggedPlaylist) {
+      const targetIndex = findIndex(newOrder, (playlist) => playlist.id === targetPlaylistId);
+      newOrder.splice(targetIndex, 0, draggedPlaylist);
+      savePlaylists(newOrder);
+    }
+
+    setDraggedPlaylistId(null);
+  };
+
   const handleYoutubeStateChange = (state: number) => {
     if (state === 0) {
       handleSongEnd();
@@ -475,25 +522,53 @@ export const MusicPlayer = () => {
             <List>
               <For each={playlists()}>
                 {(playlist) => (
-                  <ListItemContainer
+                  <DraggablePlaylistItem
                     selected={playlist.id === get(currentPlaylist(), "id")}
-                    onClick={() => loadPlaylist(playlist)}
+                    draggable
+                    onDragStart={(e) => handlePlaylistDragStart(e, playlist.id)}
+                    onDragOver={handlePlaylistDragOver}
+                    onDrop={(e) => handlePlaylistDrop(e, playlist.id)}
                   >
-                    <ListItem>
-                      <ListItemText primary={playlist.name} />
-                      <IconButton
-                        edge="end"
-                        aria-label="delete"
-                        onClick={() => removePlaylist(playlist)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </ListItem>
-                  </ListItemContainer>
+                    <IconButton sx={{ cursor: "move" }}>
+                      <DragIndicatorIcon />
+                    </IconButton>
+                    <ListItemText
+                      primary={playlist.name}
+                      onClick={() => loadPlaylist(playlist)}
+                      style={{ cursor: "pointer", flex: 1 }}
+                    />
+                    <IconButton
+                      edge="end"
+                      aria-label="edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditPlaylistDialog(playlist);
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      aria-label="delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removePlaylist(playlist);
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </DraggablePlaylistItem>
                 )}
               </For>
             </List>
-            <Button startIcon={<AddIcon />} onClick={() => setDialogView("playlist")}>
+            <Button
+              startIcon={<AddIcon />}
+              onClick={() => {
+                setDialogMode("add");
+                setNewPlaylistName("");
+                setDialogView("playlist");
+              }}
+            >
               Add Playlist
             </Button>
           </PlaylistList>
@@ -660,7 +735,7 @@ export const MusicPlayer = () => {
       </PlayerContainer>
 
       <Dialog open={dialogView() === "playlist"} onClose={() => setDialogView(null)}>
-        <DialogTitle>Add New Playlist</DialogTitle>
+        <DialogTitle>{dialogMode() === "add" ? "Add New Playlist" : "Edit Playlist"}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
@@ -673,7 +748,7 @@ export const MusicPlayer = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialogView(null)}>Cancel</Button>
-          <Button onClick={addPlaylist}>Add</Button>
+          <Button onClick={addOrUpdatePlaylist}>{dialogMode() === "add" ? "Add" : "Update"}</Button>
         </DialogActions>
       </Dialog>
 

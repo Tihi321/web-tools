@@ -85,11 +85,14 @@ export const YoutubePlayer = (props: {
     player = YouTubePlayer(playerRef as HTMLDivElement, {
       videoId: props.videoId,
       playerVars: {
-        playsinline: 1,
-        controls: 0,
-        disablekb: 1,
-        rel: 0,
-        modestbranding: 1,
+        autoplay: 0, // Don't autoplay the video
+        controls: 0, // Show video controls
+        disablekb: 1, // Disable keyboard controls
+        fs: 1, // Disable fullscreen button
+        modestbranding: 1, // Hide YouTube logo
+        playsinline: 1, // Play video inline on mobile devices
+        rel: 0, // Don't show related videos at the end
+        iv_load_policy: 3, // Don't show video annotations
       },
     });
 
