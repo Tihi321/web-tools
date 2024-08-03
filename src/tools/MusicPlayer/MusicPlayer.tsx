@@ -1,5 +1,4 @@
 import { createSignal, For, onMount } from "solid-js";
-import { createStore } from "solid-js/store";
 import {
   Box,
   Typography,
@@ -30,7 +29,7 @@ import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
-import { filter, map, get, find, findIndex, isEmpty, throttle } from "lodash";
+import { filter, map, get, find, findIndex, isEmpty, throttle, set } from "lodash";
 import { YoutubePlayer, YoutubePlayerWrapper } from "./YoutubePlayer";
 import { AudioPlayer, AudioPlayerWrapper } from "./AudioPlayer";
 import { Snackbar } from "../../components/toasts/Snackbar";
@@ -122,14 +121,12 @@ type DialogView = "playlist" | "song" | "deletePlaylist" | "deleteSong" | null;
 type DialogMode = "add" | "edit";
 
 export const MusicPlayer = () => {
-  const [store, setStore] = createStore({
-    isPlaying: false,
-    volume: 1,
-    currentTime: 0,
-    duration: 0,
-    autoplay: false,
-    video: false,
-  });
+  const [isPlaying, setIsPlaying] = createSignal(false);
+  const [volume, setVolume] = createSignal(1);
+  const [currentTime, setCurrentTime] = createSignal(0);
+  const [duration, setDuration] = createSignal(0);
+  const [autoplay, setAutoplay] = createSignal(false);
+  const [video, setVideo] = createSignal(false);
   const [playlists, setPlaylists] = createSignal<Playlist[]>([]);
   const [currentPlaylist, setCurrentPlaylist] = createSignal<Playlist | null>(null);
   const [currentSong, setCurrentSong] = createSignal<Song | null>(null);
@@ -155,13 +152,13 @@ export const MusicPlayer = () => {
       if (!updatedPlaylist) {
         setCurrentPlaylist(null);
         setCurrentSong(null);
-        setStore("isPlaying", false);
+        setIsPlaying(false);
       } else {
         setCurrentPlaylist(updatedPlaylist);
         if (currentSong()) {
           if (!find(updatedPlaylist.songs, (song) => song.id === currentSong()!.id)) {
             setCurrentSong(null);
-            setStore("isPlaying", false);
+            setIsPlaying(false);
           }
         }
       }
@@ -178,8 +175,8 @@ export const MusicPlayer = () => {
     if (storedPlaylists) {
       setPlaylists(JSON.parse(storedPlaylists));
     }
-    setStore("autoplay", autoplay === "true");
-    setStore("video", video === "true");
+    setAutoplay(autoplay === "true");
+    setVideo(video === "true");
   });
 
   const addOrUpdatePlaylist = () => {
@@ -219,8 +216,8 @@ export const MusicPlayer = () => {
     if (!song.disabled) {
       resetPlayState();
       setCurrentSong(song);
-      setStore("isPlaying", true);
-      setStore("currentTime", 0);
+      setIsPlaying(true);
+      setCurrentTime(0);
 
       if (song.type === "audio") {
         const player = audioPlayer();
@@ -237,7 +234,7 @@ export const MusicPlayer = () => {
             player.play();
           } else {
             console.error("Invalid YouTube URL");
-            setStore("isPlaying", false);
+            setIsPlaying(false);
           }
         }
       }
@@ -249,22 +246,22 @@ export const MusicPlayer = () => {
       if (currentSong()!.type === "audio") {
         const player = audioPlayer();
         if (player) {
-          store.isPlaying ? player.pause() : player.play();
+          isPlaying() ? player.pause() : player.play();
         }
       } else if (currentSong()!.type === "youtube") {
         const player = youtubePlayer();
         if (player) {
-          store.isPlaying ? player.pause() : player.play();
+          isPlaying() ? player.pause() : player.play();
         }
       }
-      setStore("isPlaying", !store.isPlaying);
+      setIsPlaying(!isPlaying());
     }
   };
 
   const resetPlayState = () => {
-    setStore("isPlaying", false);
-    setStore("currentTime", 0);
-    setStore("duration", 0);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
     if (audioPlayer()) {
       audioPlayer()!.stop();
     }
@@ -321,7 +318,7 @@ export const MusicPlayer = () => {
 
   const handleVolumeChange = (newVolume: string) => {
     const newVolumeNumber = Number(newVolume);
-    setStore("volume", newVolumeNumber);
+    setVolume(newVolumeNumber);
     if (audioPlayer()) {
       audioPlayer()!.setVolume(newVolumeNumber);
     }
@@ -331,20 +328,20 @@ export const MusicPlayer = () => {
   };
 
   const toggleAutoplay = () => {
-    setStore("autoplay", !store.autoplay);
-    localStorage.setItem("web-tools/musicplayerautoplay", store.autoplay.toString());
+    setAutoplay(!autoplay());
+    localStorage.setItem("web-tools/musicplayerautoplay", autoplay().toString());
   };
 
   const toggleVideo = () => {
-    setStore("video", !store.video);
-    localStorage.setItem("web-tools/musicplayervideo", store.video.toString());
+    setVideo(!video());
+    localStorage.setItem("web-tools/musicplayervideo", video().toString());
   };
 
   const handleSongEnd = () => {
-    if (store.autoplay) {
+    if (autoplay()) {
       nextSong();
     } else {
-      setStore("isPlaying", false);
+      setIsPlaying(false);
     }
   };
 
@@ -491,9 +488,9 @@ export const MusicPlayer = () => {
     if (state === 0) {
       handleSongEnd();
     } else if (state === 1) {
-      setStore("isPlaying", true);
+      setIsPlaying(true);
     } else if (state === 2) {
-      setStore("isPlaying", false);
+      setIsPlaying(false);
     }
   };
 
@@ -515,7 +512,7 @@ export const MusicPlayer = () => {
   const handleTimeChange = (e: Event) => {
     const target = e.target as HTMLInputElement;
     const newTime = Number(target.value);
-    setStore("currentTime", newTime);
+    setCurrentTime(newTime);
     throttledSeekTo(newTime);
   };
 
@@ -588,35 +585,35 @@ export const MusicPlayer = () => {
         <Player>
           <AudioPlayer
             title={currentSong()?.name || ""}
-            show={currentSong()?.type === "audio" && store.video}
+            show={currentSong()?.type === "audio" && video()}
             audioSrc={currentSong()?.type === "audio" ? currentSong()!.src : ""}
             onReady={(player) => setAudioPlayer(player)}
             onStateChange={(state) => {
               if (state === 0) {
                 handleSongEnd();
               } else if (state === 1) {
-                setStore("isPlaying", true);
+                setIsPlaying(true);
               } else if (state === 2) {
-                setStore("isPlaying", false);
+                setIsPlaying(false);
               }
             }}
             onTimeUpdate={(currentTime, duration) => {
               if (currentSong()?.type === "audio") {
-                setStore("currentTime", currentTime);
-                setStore("duration", duration);
+                setCurrentTime(currentTime);
+                setDuration(duration);
               }
             }}
           />
 
           <YoutubePlayer
             videoId=""
-            show={currentSong()?.type === "youtube" && store.video}
+            show={currentSong()?.type === "youtube" && video()}
             onReady={(player) => setYoutubePlayer(player)}
             onStateChange={handleYoutubeStateChange}
             onTimeUpdate={(currentTime, duration) => {
               if (currentSong()?.type === "youtube") {
-                setStore("currentTime", currentTime);
-                setStore("duration", duration);
+                setCurrentTime(currentTime);
+                setDuration(duration);
               }
             }}
             onError={handleYoutubeError}
@@ -636,17 +633,17 @@ export const MusicPlayer = () => {
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
               <IconButton
                 onClick={() =>
-                  handleVolumeChange({ target: { value: store.volume === 0 ? "1" : "0" } } as any)
+                  handleVolumeChange({ target: { value: volume() === 0 ? "1" : "0" } } as any)
                 }
               >
-                {store.volume === 0 ? <VolumeOffIcon /> : <VolumeUpIcon />}
+                {volume() === 0 ? <VolumeOffIcon /> : <VolumeUpIcon />}
               </IconButton>
               <RangeInput
                 type="range"
                 min="0"
                 max="1"
                 step="0.01"
-                value={store.volume}
+                value={volume()}
                 onInput={(event) => handleVolumeChange((event.target as HTMLInputElement).value)}
                 style={{ width: "200px", "margin-left": "16px" }}
               />
@@ -656,7 +653,7 @@ export const MusicPlayer = () => {
                 <SkipPreviousIcon />
               </IconButton>
               <IconButton onClick={togglePlay} disabled={!currentSong()}>
-                {store.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                {isPlaying() ? <PauseIcon /> : <PlayArrowIcon />}
               </IconButton>
               <IconButton onClick={nextSong} disabled={!currentSong()}>
                 <SkipNextIcon />
@@ -665,24 +662,24 @@ export const MusicPlayer = () => {
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Typography>Autoplay</Typography>
-                <Switch checked={store.autoplay} onChange={toggleAutoplay} />
+                <Switch checked={autoplay()} onChange={toggleAutoplay} />
               </Box>
               <Box sx={{ display: "flex", alignItems: "center" }}>
                 <Typography>Video</Typography>
-                <Switch checked={store.video} onChange={toggleVideo} />
+                <Switch checked={video()} onChange={toggleVideo} />
               </Box>
             </Box>
           </Box>
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2">
-              {formatTime(store.currentTime)} / {formatTime(store.duration)}
+              {formatTime(currentTime())} / {formatTime(duration())}
             </Typography>
             <RangeInput
               type="range"
               min="0"
-              max={store.duration || 100}
+              max={duration() || 100}
               step="0.01"
-              value={store.currentTime}
+              value={currentTime()}
               onInput={handleTimeChange}
               style={{ width: "100%" }}
             />
