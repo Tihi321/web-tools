@@ -29,7 +29,7 @@ import ContentCopyIcon from "@suid/icons-material/ContentCopy";
 import DragIndicatorIcon from "@suid/icons-material/DragIndicator";
 import { styled } from "solid-styled-components";
 import { RangeInput } from "../../components/inputs/RangeInput";
-import { filter, map, get, find, findIndex, isEmpty, throttle, set } from "lodash";
+import { filter, map, get, find, findIndex, isEmpty, throttle } from "lodash";
 import { YoutubePlayer, YoutubePlayerWrapper } from "./YoutubePlayer";
 import { AudioPlayer, AudioPlayerWrapper } from "./AudioPlayer";
 import { Snackbar } from "../../components/toasts/Snackbar";
