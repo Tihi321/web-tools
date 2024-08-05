@@ -1,8 +1,6 @@
 import { Box } from "@suid/material";
-import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
+import { createSignal, onMount, onCleanup } from "solid-js";
 import { styled } from "solid-styled-components";
-import YouTubePlayer from "youtube-player";
-import { debounce } from "lodash";
 
 const Container = styled(Box)`
   position: relative;
@@ -24,6 +22,13 @@ export interface YoutubePlayerWrapper {
   getCurrentTime: () => Promise<number>;
 }
 
+declare global {
+  interface Window {
+    onYouTubeIframeAPIReady: () => void;
+    YT: any;
+  }
+}
+
 export const YoutubePlayer = (props: {
   videoId: string;
   show: boolean;
@@ -35,86 +40,19 @@ export const YoutubePlayer = (props: {
   let playerRef: HTMLDivElement | undefined;
   let player: any;
   const [isPlaying, setIsPlaying] = createSignal(false);
-  const [lastKnownTime, setLastKnownTime] = createSignal(0);
-  const [lastKnownDuration, setLastKnownDuration] = createSignal(0);
+  let intervalId: number | undefined;
 
-  const debouncedTimeUpdate = debounce(() => {
-    if (player && isPlaying()) {
-      player
-        .getCurrentTime()
-        .then((currentTime: number) => {
-          setLastKnownTime(currentTime);
-          props.onTimeUpdate(currentTime, lastKnownDuration());
-        })
-        .catch((error: any) => props.onError(error));
-    }
-  }, 1000);
-
-  createEffect(() => {
-    if (isPlaying()) {
-      const intervalId = setInterval(debouncedTimeUpdate, 1000);
-      onCleanup(() => clearInterval(intervalId));
-    }
-  });
-
-  const youtubePlayerWrapper: YoutubePlayerWrapper = {
-    play: async () => {
-      try {
-        await player.playVideo();
-        setIsPlaying(true);
-      } catch (error) {
-        props.onError(error);
-      }
-    },
-    pause: async () => {
-      try {
-        await player.pauseVideo();
-        setIsPlaying(false);
-      } catch (error) {
-        props.onError(error);
-      }
-    },
-    stop: async () => {
-      try {
-        await player.stopVideo();
-        setIsPlaying(false);
-      } catch (error) {
-        props.onError(error);
-      }
-    },
-    setVolume: (volume: number) => {
-      player.setVolume(volume * 100).catch((error: any) => props.onError(error));
-    },
-    seekTo: (time: number) => {
-      player.seekTo(time).catch((error: any) => props.onError(error));
-    },
-    loadVideoById: (videoId: string) => {
-      player.loadVideoById(videoId).catch((error: any) => props.onError(error));
-    },
-    getDuration: async () => {
-      try {
-        const duration = await player.getDuration();
-        setLastKnownDuration(duration);
-        return duration;
-      } catch (error) {
-        props.onError(error);
-        return lastKnownDuration();
-      }
-    },
-    getCurrentTime: async () => {
-      try {
-        const currentTime = await player.getCurrentTime();
-        setLastKnownTime(currentTime);
-        return currentTime;
-      } catch (error) {
-        props.onError(error);
-        return lastKnownTime();
-      }
-    },
+  const loadYouTubeAPI = () => {
+    const tag = document.createElement("script");
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName("script")[0];
+    firstScriptTag.parentNode!.insertBefore(tag, firstScriptTag);
   };
 
-  onMount(() => {
-    player = YouTubePlayer(playerRef as HTMLDivElement, {
+  const initPlayer = () => {
+    player = new window.YT.Player(playerRef, {
+      height: "360",
+      width: "640",
       videoId: props.videoId,
       playerVars: {
         autoplay: 0,
@@ -126,22 +64,88 @@ export const YoutubePlayer = (props: {
         rel: 0,
         iv_load_policy: 3,
       },
+      events: {
+        onReady: onPlayerReady,
+        onStateChange: onPlayerStateChange,
+        onError: onPlayerError,
+      },
     });
+  };
 
-    player.on("ready", () => props.onReady(youtubePlayerWrapper));
-    player.on("stateChange", (event: { data: number }) => {
-      props.onStateChange(event.data);
-      setIsPlaying(event.data === 1);
-    });
-    player.on("error", (error: any) => props.onError(error));
+  const onPlayerReady = () => {
+    props.onReady(youtubePlayerWrapper);
+  };
+
+  const onPlayerStateChange = (event: { data: number }) => {
+    props.onStateChange(event.data);
+    if (event.data === window.YT.PlayerState.PLAYING) {
+      setIsPlaying(true);
+      startTimeUpdateInterval();
+    } else {
+      setIsPlaying(false);
+      stopTimeUpdateInterval();
+    }
+  };
+
+  const onPlayerError = (event: { data: any }) => {
+    props.onError(event.data);
+  };
+
+  const startTimeUpdateInterval = () => {
+    intervalId = window.setInterval(() => {
+      if (player && isPlaying()) {
+        const currentTime = player.getCurrentTime();
+        const duration = player.getDuration();
+        props.onTimeUpdate(currentTime, duration);
+      }
+    }, 1000);
+  };
+
+  const stopTimeUpdateInterval = () => {
+    if (intervalId !== undefined) {
+      clearInterval(intervalId);
+      intervalId = undefined;
+    }
+  };
+
+  const youtubePlayerWrapper: YoutubePlayerWrapper = {
+    play: async () => {
+      await player.playVideo();
+    },
+    pause: async () => {
+      await player.pauseVideo();
+    },
+    stop: async () => {
+      await player.stopVideo();
+    },
+    setVolume: (volume: number) => {
+      player.setVolume(volume * 100);
+    },
+    seekTo: (time: number) => {
+      player.seekTo(time);
+    },
+    loadVideoById: (videoId: string) => {
+      player.loadVideoById(videoId);
+    },
+    getDuration: () => Promise.resolve(player.getDuration()),
+    getCurrentTime: () => Promise.resolve(player.getCurrentTime()),
+  };
+
+  onMount(() => {
+    loadYouTubeAPI();
+    window.onYouTubeIframeAPIReady = initPlayer;
+  });
+
+  onCleanup(() => {
+    stopTimeUpdateInterval();
+    if (player) {
+      player.destroy();
+    }
   });
 
   return (
     <Container sx={{ display: props.show ? "block" : "none" }}>
-      <div
-        ref={playerRef}
-        style={{ position: "absolute", top: "0", left: "0", right: "0", bottom: "0" }}
-      ></div>
+      <div ref={playerRef}></div>
     </Container>
   );
 };
