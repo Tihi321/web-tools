@@ -1,5 +1,5 @@
 import { Box } from "@suid/material";
-import { createSignal, onMount, onCleanup } from "solid-js";
+import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 import { styled } from "solid-styled-components";
 
 const Container = styled(Box)`
@@ -17,7 +17,6 @@ export interface YoutubePlayerWrapper {
   stop: () => Promise<void>;
   setVolume: (volume: number) => void;
   seekTo: (time: number) => void;
-  loadVideoById: (videoId: string) => void;
   getDuration: () => Promise<number>;
   getCurrentTime: () => Promise<number>;
 }
@@ -40,13 +39,19 @@ export const YoutubePlayer = (props: {
   let playerRef: HTMLDivElement | undefined;
   let player: any;
   const [isPlaying, setIsPlaying] = createSignal(false);
+  const [isReady, setIsReady] = createSignal(false);
   let intervalId: number | undefined;
 
   const loadYouTubeAPI = () => {
+    if (window.YT) {
+      initPlayer();
+      return;
+    }
     const tag = document.createElement("script");
     tag.src = "https://www.youtube.com/iframe_api";
     const firstScriptTag = document.getElementsByTagName("script")[0];
     firstScriptTag.parentNode!.insertBefore(tag, firstScriptTag);
+    window.onYouTubeIframeAPIReady = initPlayer;
   };
 
   const initPlayer = () => {
@@ -73,6 +78,7 @@ export const YoutubePlayer = (props: {
   };
 
   const onPlayerReady = () => {
+    setIsReady(true);
     props.onReady(youtubePlayerWrapper);
   };
 
@@ -124,16 +130,18 @@ export const YoutubePlayer = (props: {
     seekTo: (time: number) => {
       player.seekTo(time);
     },
-    loadVideoById: (videoId: string) => {
-      player.loadVideoById(videoId);
-    },
     getDuration: () => Promise.resolve(player.getDuration()),
     getCurrentTime: () => Promise.resolve(player.getCurrentTime()),
   };
 
+  createEffect(() => {
+    if (isReady() && props.videoId) {
+      player.loadVideoById(props.videoId);
+    }
+  });
+
   onMount(() => {
     loadYouTubeAPI();
-    window.onYouTubeIframeAPIReady = initPlayer;
   });
 
   onCleanup(() => {

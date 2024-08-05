@@ -228,14 +228,7 @@ export const MusicPlayer = () => {
       } else if (song.type === "youtube") {
         const player = youtubePlayer();
         if (player) {
-          const videoId = getYoutubeId(song.src);
-          if (videoId) {
-            player.loadVideoById(videoId);
-            player.play();
-          } else {
-            console.error("Invalid YouTube URL");
-            setIsPlaying(false);
-          }
+          player.play();
         }
       }
     }
@@ -606,7 +599,9 @@ export const MusicPlayer = () => {
           />
 
           <YoutubePlayer
-            videoId=""
+            videoId={
+              currentSong()?.type === "youtube" ? getYoutubeId(currentSong()!.src) || "" : ""
+            }
             show={currentSong()?.type === "youtube" && video()}
             onReady={(player) => setYoutubePlayer(player)}
             onStateChange={handleYoutubeStateChange}
