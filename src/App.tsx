@@ -15,6 +15,7 @@ import { Frame } from "./components/layout/Frame";
 import { Embed } from "./components/embed/Embed";
 import { Kanban } from "./tools/Kanban";
 import { QuickNotes } from "./tools/QuickNotes";
+import { JsonCreator } from "./tools/JsonCreator";
 
 const Container = styled("div")`
   display: flex;
@@ -33,6 +34,7 @@ const tools: string[] = [
   "stopwatch",
   "multi-timer",
   "json-validator",
+  "json-creator",
   "json-stringifier",
 ];
 
@@ -68,6 +70,7 @@ export const App = () => {
           {selectedTool() === "stopwatch" && <Stopwatch />}
           {selectedTool() === "multi-timer" && <MultiTimer />}
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
+          {selectedTool() === "json-creator" && <JsonCreator />}
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
         </Show>
       </Frame>
