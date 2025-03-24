@@ -1,7 +1,19 @@
 import { onCleanup, createEffect, createSignal } from "solid-js";
 import { isNil } from "lodash";
 import { styled } from "solid-styled-components";
-import { Box } from "@suid/material";
+import { Box, Button, Switch, FormControlLabel } from "@suid/material";
+
+// Add FileSystem API types
+declare global {
+  interface Window {
+    showOpenFilePicker(options?: {
+      types?: Array<{
+        description: string;
+        accept: Record<string, string[]>;
+      }>;
+    }): Promise<FileSystemFileHandle[]>;
+  }
+}
 
 const Container = styled(Box)`
   position: relative;
@@ -17,16 +29,33 @@ const Container = styled(Box)`
   font-weight: bold;
 `;
 
+const Controls = styled("div")`
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 8px 16px;
+  border-radius: 8px;
+`;
+
 export interface AudioPlayerWrapper {
   play: () => Promise<void>;
   pause: () => Promise<void>;
   stop: () => Promise<void>;
   setVolume: (volume: number) => void;
   seekTo: (time: number) => void;
-  loadAudioBy: (audioSrc: string) => void;
+  loadAudioBy: (audioSrc: string) => Promise<void>;
   getDuration: () => number;
   getCurrentTime: () => number;
 }
+
+const isLocalPath = (path: string): boolean => {
+  return path.startsWith("file://") || /^[A-Za-z]:\\/.test(path) || path.startsWith("/");
+};
 
 export const AudioPlayer = (props: {
   audioSrc: string;
@@ -35,15 +64,63 @@ export const AudioPlayer = (props: {
   onReady: (player: AudioPlayerWrapper) => void;
   onStateChange: (state: number) => void;
   onTimeUpdate: (currentTime: number, duration: number) => void;
+  onError?: (error: string) => void;
 }) => {
   let audioRef: HTMLAudioElement | undefined;
   const [duration, setDuration] = createSignal(0);
+  const [isLocalMode, setIsLocalMode] = createSignal(false);
+
+  const handleLocalFile = async (path: string): Promise<string> => {
+    try {
+      const handle = await window.showOpenFilePicker({
+        types: [
+          {
+            description: "Audio Files",
+            accept: {
+              "audio/*": [".mp3", ".wav", ".ogg", ".m4a"],
+            },
+          },
+        ],
+      });
+
+      const file = await handle[0].getFile();
+      return URL.createObjectURL(file);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : "Unknown error occurred";
+      if (props.onError) {
+        props.onError("Failed to access local file: " + error);
+      }
+      throw new Error("Failed to access local file: " + error);
+    }
+  };
+
+  const handleFileSelect = async () => {
+    try {
+      const objectUrl = await handleLocalFile("");
+      if (audioRef) {
+        audioRef.src = objectUrl;
+        audioRef.load();
+      }
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : "Unknown error occurred";
+      if (props.onError) {
+        props.onError("Failed to load local file: " + error);
+      }
+    }
+  };
 
   const audioPlayerWrapper: AudioPlayerWrapper = {
     play: async () => {
       if (audioRef) {
-        await audioRef.play();
-        props.onStateChange(1); // Playing state
+        try {
+          await audioRef.play();
+          props.onStateChange(1); // Playing state
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err.message : "Unknown error occurred";
+          if (props.onError) {
+            props.onError("Failed to play audio: " + error);
+          }
+        }
       }
     },
     pause: async () => {
@@ -69,10 +146,22 @@ export const AudioPlayer = (props: {
         audioRef.currentTime = time;
       }
     },
-    loadAudioBy: (audioSrc: string) => {
+    loadAudioBy: async (audioSrc: string) => {
       if (audioRef) {
-        audioRef.src = audioSrc;
-        audioRef.load();
+        try {
+          if (isLocalPath(audioSrc)) {
+            const objectUrl = await handleLocalFile(audioSrc);
+            audioRef.src = objectUrl;
+          } else {
+            audioRef.src = audioSrc;
+          }
+          audioRef.load();
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err.message : "Unknown error occurred";
+          if (props.onError) {
+            props.onError("Failed to load audio: " + error);
+          }
+        }
       }
     },
     getDuration: () => duration(),
@@ -113,8 +202,25 @@ export const AudioPlayer = (props: {
   });
 
   return (
-    <Container sx={{ display: props.show ? "flex" : "none" }}>
-      {props.title}
+    <Container sx={{ display: props.show ? "flex" : "none", flexDirection: "column" }}>
+      <div
+        style={{ flex: 1, display: "flex", "align-items": "center", "justify-content": "center" }}
+      >
+        {props.title}
+      </div>
+      <Controls>
+        <FormControlLabel
+          control={
+            <Switch checked={isLocalMode()} onChange={(_, checked) => setIsLocalMode(checked)} />
+          }
+          label="Local File"
+        />
+        {isLocalMode() && (
+          <Button variant="contained" color="primary" onClick={handleFileSelect}>
+            Browse Files
+          </Button>
+        )}
+      </Controls>
       <audio ref={audioRef} style={{ display: "none" }} />
     </Container>
   );

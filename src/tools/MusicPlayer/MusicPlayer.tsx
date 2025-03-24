@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControlLabel,
 } from "@suid/material";
 import PlayArrowIcon from "@suid/icons-material/PlayArrow";
 import PauseIcon from "@suid/icons-material/Pause";
@@ -145,6 +146,7 @@ export const MusicPlayer = () => {
   const [youtubePlayer, setYoutubePlayer] = createSignal<YoutubePlayerWrapper | null>(null);
   const [audioPlayer, setAudioPlayer] = createSignal<AudioPlayerWrapper | null>(null);
   const [error, setError] = createSignal<string | null>(null);
+  const [isLocalFileMode, setIsLocalFileMode] = createSignal(false);
 
   const savePlaylists = (playlists: Playlist[]) => {
     if (currentPlaylist()) {
@@ -515,6 +517,30 @@ export const MusicPlayer = () => {
     return match && match[2].length === 11 ? match[2] : null;
   };
 
+  const handleLocalFileSelect = async () => {
+    try {
+      const handle = await window.showOpenFilePicker({
+        types: [
+          {
+            description: "Audio Files",
+            accept: {
+              "audio/*": [".mp3", ".wav", ".ogg", ".m4a"],
+            },
+          },
+        ],
+      });
+
+      const file = await handle[0].getFile();
+      const objectUrl = URL.createObjectURL(file);
+      setNewSongName(file.name);
+      setNewSongSrc(objectUrl);
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err.message : "Unknown error occurred";
+      setSnackbarMessage("Failed to load local file: " + error);
+      setSnackbarOpen(true);
+    }
+  };
+
   return (
     <Container>
       <PlayerContainer>
@@ -760,6 +786,17 @@ export const MusicPlayer = () => {
       <Dialog open={dialogView() === "song"} onClose={() => setDialogView(null)}>
         <DialogTitle>Add New Song</DialogTitle>
         <DialogContent>
+          <Box sx={{ mb: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isLocalFileMode()}
+                  onChange={(_, checked) => setIsLocalFileMode(checked)}
+                />
+              }
+              label="Local File"
+            />
+          </Box>
           <TextField
             autoFocus
             margin="dense"
@@ -768,17 +805,45 @@ export const MusicPlayer = () => {
             value={newSongName()}
             onChange={(e) => setNewSongName(e.target.value)}
           />
-          <TextField
-            margin="dense"
-            label="Song URL"
-            fullWidth
-            value={newSongSrc()}
-            onChange={(e) => setNewSongSrc(e.target.value)}
-          />
+          {isLocalFileMode() ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleLocalFileSelect}
+              sx={{ mt: 2 }}
+              fullWidth
+            >
+              Browse Files
+            </Button>
+          ) : (
+            <TextField
+              margin="dense"
+              label="Song URL"
+              fullWidth
+              value={newSongSrc()}
+              onChange={(e) => setNewSongSrc(e.target.value)}
+            />
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogView(null)}>Cancel</Button>
-          <Button onClick={addSong}>Add</Button>
+          <Button
+            onClick={() => {
+              setDialogView(null);
+              setIsLocalFileMode(false);
+              setNewSongName("");
+              setNewSongSrc("");
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              addSong();
+              setIsLocalFileMode(false);
+            }}
+          >
+            Add
+          </Button>
         </DialogActions>
       </Dialog>
 
