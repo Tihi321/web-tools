@@ -96,7 +96,7 @@ export const AudioPlayer = (props: {
 
   const handleFileSelect = async () => {
     try {
-      const objectUrl = await handleLocalFile("");
+      const objectUrl = await handleLocalFile();
       if (audioRef) {
         audioRef.src = objectUrl;
         audioRef.load();
@@ -150,7 +150,7 @@ export const AudioPlayer = (props: {
       if (audioRef) {
         try {
           if (isLocalPath(audioSrc)) {
-            const objectUrl = await handleLocalFile(audioSrc);
+            const objectUrl = await handleLocalFile();
             audioRef.src = objectUrl;
           } else {
             audioRef.src = audioSrc;
