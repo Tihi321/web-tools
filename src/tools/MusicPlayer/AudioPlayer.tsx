@@ -70,7 +70,7 @@ export const AudioPlayer = (props: {
   const [duration, setDuration] = createSignal(0);
   const [isLocalMode, setIsLocalMode] = createSignal(false);
 
-  const handleLocalFile = async (path: string): Promise<string> => {
+  const handleLocalFile = async (): Promise<string> => {
     try {
       const handle = await window.showOpenFilePicker({
         types: [
