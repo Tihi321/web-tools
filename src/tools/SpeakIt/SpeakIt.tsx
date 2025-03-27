@@ -121,6 +121,7 @@ export const SpeakIt = () => {
         onChange={(e) => setInputText(e.target.value)}
         placeholder="Type something to speak :)"
         sx={{ mb: 2 }}
+        id="input-text"
       />
       <Box sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
         <FormControl fullWidth margin="normal">
@@ -189,6 +190,7 @@ export const SpeakIt = () => {
             const voices = getVoices();
             setAvailableVoices(voices);
           }}
+          id="refresh-voices"
         >
           <Refresh />
         </Button>
@@ -202,10 +204,10 @@ export const SpeakIt = () => {
         >
           <Save />
         </Button>
-        <Button variant="contained" onClick={speakIt}>
+        <Button variant="contained" onClick={speakIt} id="speak-it">
           {speaking() ? <Pause /> : <Play />}
         </Button>
-        <Button variant="contained" onClick={stopSpeaking}>
+        <Button variant="contained" onClick={stopSpeaking} id="stop-speaking">
           <Stop />
         </Button>
       </Box>
