@@ -20,6 +20,7 @@ import { Play } from "../../components/icons/Play";
 import { Stop } from "../../components/icons/Stop";
 import { Pause } from "../../components/icons/Pause";
 import { RangeInput } from "../../components/inputs/RangeInput";
+import { LANGUAGES } from "../../constants";
 
 const MenuItemStyled = styled(MenuItem)`
   display: flex;
@@ -43,6 +44,8 @@ const MenuTitle = styled("div")`
 export const SpeakIt = () => {
   const [inputText, setInputText] = createSignal("");
   const [selectedVoice, setSelectedVoice] = createSignal("");
+  const [selectedLanguage, setSelectedLanguage] = createSignal("");
+  const [isMultilingualVoice, setIsMultilingualVoice] = createSignal(false);
   const [speaking, setSpeaking] = createSignal(false);
   const [speakerSet, setSpeakerSet] = createSignal(false);
   const [mounted, setMounted] = createSignal(false);
@@ -56,6 +59,8 @@ export const SpeakIt = () => {
     speaker = new SpeechSynthesisUtterance();
     const voice = getStringValue("web-tools/selectedVoice");
     setSelectedVoice(voice || "");
+    const lang = getStringValue("web-tools/selectedLanguage");
+    setSelectedLanguage(lang || "");
     setMounted(true);
   });
 
@@ -75,6 +80,15 @@ export const SpeakIt = () => {
     }
   });
 
+  createEffect(() => {
+    if (selectedVoice() && availableVoices().length > 0) {
+      const voice = getVoice(selectedVoice(), availableVoices());
+      const isMultilingual = voice.name.includes("Multilingual");
+      setIsMultilingualVoice(isMultilingual);
+      setSelectedLanguage(voice.lang);
+    }
+  });
+
   const stopSpeaking = () => {
     if (!speaker) return;
     speechSynthesis.cancel();
@@ -84,6 +98,7 @@ export const SpeakIt = () => {
 
   const speakIt = () => {
     if (!speaker) return;
+
     const voice = getVoice(selectedVoice() || "", availableVoices());
     if (voice) {
       if (speakerSet()) {
@@ -96,7 +111,7 @@ export const SpeakIt = () => {
         }
       } else {
         speaker.voice = voice;
-        speaker.lang = voice.lang;
+        speaker.lang = selectedLanguage();
         speaker.text = inputText();
         speaker.pitch = pitch();
         speaker.rate = rate();
@@ -135,6 +150,24 @@ export const SpeakIt = () => {
             {map(availableVoices(), (values: SpeechSynthesisVoice) => (
               <MenuItemStyled value={values.name}>
                 <MenuTitle>{values.name}</MenuTitle>
+              </MenuItemStyled>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+      <Box sx={{ display: "flex", gap: 2, mb: 2, alignItems: "center" }}>
+        <FormControl fullWidth margin="normal">
+          <InputLabel>Language</InputLabel>
+          <Select
+            value={selectedLanguage()}
+            onChange={(event) => {
+              setSelectedLanguage(event.target.value);
+            }}
+            disabled={!isMultilingualVoice()}
+          >
+            {map(LANGUAGES, (language: string) => (
+              <MenuItemStyled value={language}>
+                <MenuTitle>{language}</MenuTitle>
               </MenuItemStyled>
             ))}
           </Select>
@@ -200,6 +233,7 @@ export const SpeakIt = () => {
           color="primary"
           onClick={() => {
             saveStringValue("web-tools/selectedVoice", selectedVoice());
+            saveStringValue("web-tools/selectedLanguage", selectedLanguage());
           }}
         >
           <Save />
