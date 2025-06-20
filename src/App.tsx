@@ -1,6 +1,6 @@
 import { createSignal, Show, onMount } from "solid-js";
-import replace from "lodash/replace";
-import startCase from "lodash/startCase";
+import { replace } from "lodash";
+import { startCase } from "lodash";
 import { styled } from "solid-styled-components";
 import { Stopwatch } from "./tools/Stopwatch";
 import { JsonValidatorFormatter } from "./tools/JsonValidatorFormatter";
@@ -16,6 +16,8 @@ import { Embed } from "./components/embed/Embed";
 import { Kanban } from "./tools/Kanban";
 import { QuickNotes } from "./tools/QuickNotes";
 import { JsonCreator } from "./tools/JsonCreator";
+import { QrScanner } from "./tools/QrScanner";
+import { QrGenerator } from "./tools/QrGenerator";
 
 const Container = styled("div")`
   display: flex;
@@ -36,6 +38,8 @@ const tools: string[] = [
   "json-validator",
   "json-creator",
   "json-stringifier",
+  "qr-scanner",
+  "qr-generator",
 ];
 
 export const App = () => {
@@ -72,6 +76,8 @@ export const App = () => {
           {selectedTool() === "json-validator" && <JsonValidatorFormatter />}
           {selectedTool() === "json-creator" && <JsonCreator />}
           {selectedTool() === "json-stringifier" && <JsonStringifier />}
+          {selectedTool() === "qr-scanner" && <QrScanner />}
+          {selectedTool() === "qr-generator" && <QrGenerator />}
         </Show>
       </Frame>
     </Container>

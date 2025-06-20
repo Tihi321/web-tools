@@ -2,6 +2,7 @@ import { DefaultTheme } from "solid-styled-components";
 
 export const theme: DefaultTheme = {
   colors: {
+    primary: "rgb(21, 101, 192)",
     text: "rgb(252, 249, 230)",
     darkText: "rgb(21, 101, 192)",
     darkBackground: "rgb(21, 101, 192)",

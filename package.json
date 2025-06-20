@@ -12,7 +12,10 @@
   "dependencies": {
     "@suid/icons-material": "^0.7.0",
     "@suid/material": "^0.16.0",
+    "@types/qrcode": "^1.5.5",
+    "html5-qrcode": "^2.3.8",
     "lodash": "^4.17.21",
+    "qrcode": "^1.5.4",
     "solid-js": "^1.8.17",
     "solid-styled-components": "^0.28.5",
     "uuid": "^9.0.1"

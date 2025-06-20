@@ -1,5 +1,5 @@
 import { createSignal, createEffect, For, Show, JSX } from "solid-js";
-import { Button, TextField, Select, MenuItem, IconButton } from "@suid/material";
+import { Button, TextField, Select, MenuItem, IconButton, Box } from "@suid/material";
 import Delete from "@suid/icons-material/Delete";
 import Save from "@suid/icons-material/Save";
 import ContentCopy from "@suid/icons-material/ContentCopy";
@@ -301,7 +301,7 @@ export const JsonCreator = () => {
   };
 
   return (
-    <div>
+    <Box sx={{ width: "100%", maxWidth: 800, margin: "auto" }}>
       <h2>JSON Creator</h2>
       <div style={{ "margin-bottom": "16px" }}>
         <TextField
@@ -396,6 +396,6 @@ export const JsonCreator = () => {
           Save to Local Storage
         </Button>
       </div>
-    </div>
+    </Box>
   );
 };
