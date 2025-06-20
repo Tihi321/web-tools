@@ -195,9 +195,13 @@ export const QrScanner = () => {
           </TabButton>
         </Tabs>
 
+        <ReaderContainer
+          id={qrcodeRegionId}
+          style={{ display: activeTab() === "camera" ? "block" : "none" }}
+        />
+
         {activeTab() === "camera" && (
           <>
-            <ReaderContainer id={qrcodeRegionId} />
             <Button onClick={startCameraScan}>Scan with Camera</Button>
             <Button onClick={stopScan}>Stop Scan</Button>
           </>
